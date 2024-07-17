@@ -1,8 +1,9 @@
-export * from "./src/client";
-export * from "./src/call-wrapper";
-export * from "./src/pool";
-export * from "./src/prompt-builder";
+import * as Client from "./src/client";
+import * as Wrapper from "./src/call-wrapper";
+import * as Pool from "./src/pool";
+import * as Prompt from "./src/prompt-builder";
 
-export * from "./types/sampler";
-export * from "./types/api";
-export * from "./types/tool";
+import type { TSamplerName, TSchedulerName } from "./types/sampler";
+
+export { Pool, Prompt, Wrapper, Client };
+export type { TSamplerName, TSchedulerName };
