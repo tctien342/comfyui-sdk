@@ -1,0 +1,26 @@
+{
+  "name": "@saintno/comfyui-sdk",
+  "version": "0.0.1",
+  "description": "SDK for ComfyUI",
+  "module": "index.ts",
+  "type": "module",
+  "main": "build/index.js",
+  "typings": "build/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tctien342/comfyui-sdk.git"
+  },
+  "author": "tctien342",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tctien342/comfyui-sdk/issues"
+  },
+  "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "dts-bundle-generator": "^9.5.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
