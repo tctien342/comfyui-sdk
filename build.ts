@@ -4,6 +4,11 @@ import fs from "fs";
 
 import { peerDependencies } from "./package.json";
 
+// Create build folder if not exist
+if (!fs.existsSync("./build")) {
+  fs.mkdirSync("./build");
+}
+
 const start = Date.now();
 
 console.log("JSCompiling", "Building...");
