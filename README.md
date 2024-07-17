@@ -289,6 +289,7 @@ console.log("Mapped Outputs:", caller.mapOutputKeys);
 
 - **addClient(client: ComfyApi)**: Adds a new `ComfyApi` client to the pool.
 - **removeClient(client: ComfyApi)**: Removes a `ComfyApi` client from the pool.
+- **changeMode(mode: EQueueMode)**: Changes the queue mode of the pool.
 - **run<T>(claim: (client: ComfyApi) => Promise<T>)**: Runs a task on the pool and returns a promise that resolves with the result.
 - **batch<T>(claims: ((client: ComfyApi) => Promise<T>)[])**: Runs a batch of tasks on the pool and returns a promise that resolves with the results.
 

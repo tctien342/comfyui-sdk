@@ -1,3 +1,5 @@
+import { WebSocket } from "ws";
+
 import type {
   HistoryEntry,
   HistoryResponse,
@@ -589,7 +591,7 @@ export class ComfyApi extends EventTarget {
                 `Unknown binary websocket message of type ${eventType}`
               );
           }
-        } else {
+        } else if (typeof event.data === "string") {
           const msg = JSON.parse(event.data);
           if (msg.type !== "crystools.monitor") {
             this.dispatchEvent(new CustomEvent("all", { detail: msg }));
@@ -647,6 +649,8 @@ export class ComfyApi extends EventTarget {
                 console.warn("Unhandled event from server", msg.type, msg.data);
               }
           }
+        } else {
+          console.warn("Unhandled message:", event.data);
         }
       } catch (error) {
         console.warn("Unhandled message:", event.data, error);

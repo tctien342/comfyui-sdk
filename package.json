@@ -1,6 +1,6 @@
 {
   "name": "@saintno/comfyui-sdk",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "SDK for ComfyUI",
   "module": "index.ts",
   "type": "module",
@@ -22,5 +22,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   }
 }

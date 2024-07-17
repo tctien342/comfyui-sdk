@@ -63,10 +63,12 @@ export class ComfyPool {
   addClient(client: ComfyApi) {
     this.clients.push(client);
     this.queueInfo.push(0);
+    this.pickingInfo.push(false);
     const index = this.clients.length - 1;
     this.clients[index].on("status", (ev) => {
       this.queueInfo[index] = ev.detail.exec_info.queue_remaining as number;
     });
+    return this;
   }
 
   removeClient(client: ComfyApi) {
@@ -74,7 +76,14 @@ export class ComfyPool {
     if (index !== -1) {
       this.clients.splice(index, 1);
       this.queueInfo.splice(index, 1);
+      this.pickingInfo.splice(index, 1);
     }
+    return this;
+  }
+
+  changeMode(mode: EQueueMode) {
+    this.mode = mode;
+    return this;
   }
 
   private claim(fn: (client: ComfyApi) => Promise<void>) {
@@ -118,7 +127,7 @@ export class ComfyPool {
             return false;
           });
           if (found === -1) {
-            await delay(50);
+            await delay(20);
           }
         }
         this.queueInfo[found] = 1;

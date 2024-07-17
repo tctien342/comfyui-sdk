@@ -2,7 +2,7 @@
 import { generateDtsBundle } from "dts-bundle-generator";
 import fs from "fs";
 
-import { peerDependencies } from "./package.json";
+import { dependencies, peerDependencies } from "./package.json";
 
 // Create build folder if not exist
 if (!fs.existsSync("./build")) {
@@ -15,7 +15,7 @@ console.log("JSCompiling", "Building...");
 
 await Bun.build({
   entrypoints: ["./index.ts"],
-  external: Object.keys(Object.keys(peerDependencies)),
+  external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
   format: "esm",
   minify: true,
   outdir: "./build",
