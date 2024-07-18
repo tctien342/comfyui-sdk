@@ -41,8 +41,8 @@ export const Txt2ImgPrompt = new PromptBuilder(
  */
 const ApiPool = new ComfyPool(
   [
-    new ComfyApi("http://localhost:8188"), // Comfy Instance 1
-    new ComfyApi("http://localhost:8189"), // Comfy Instance 2
+    new ComfyApi("http://192.168.15.204:8188"), // Comfy Instance 1
+    new ComfyApi("http://192.168.15.204:8189"), // Comfy Instance 2
   ],
   EQueueMode.PICK_ZERO
 );
@@ -54,7 +54,7 @@ function randomInt(min: number, max: number) {
 
 const generateFn = async (api: ComfyApi) => {
   return new Promise<string[]>((resolve) => {
-    const seed = randomInt(1000, 9999999999);
+    const seed = 10;
     const workflow = Txt2ImgPrompt.caller
       .input("seed", seed)
       .input("step", 16)

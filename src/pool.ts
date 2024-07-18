@@ -1,4 +1,3 @@
-import { resolve } from "bun";
 import type { ComfyApi } from "./client";
 import { delay } from "./tools";
 
@@ -173,7 +172,10 @@ export class ComfyPool {
     const job = this.jobQueue.shift();
     this.picking = true;
     const client = await this.getAvailableClient();
-    job?.(client);
+    job?.(client).then(() => {
+      const clientIdx = this.clients.indexOf(client);
+      this.pickingInfo[clientIdx] = false;
+    });
     this.picking = false;
     this.pickJob();
   }

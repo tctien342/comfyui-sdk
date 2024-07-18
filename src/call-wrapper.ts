@@ -48,6 +48,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
     Record<keyof T["mapOutputPath"], any> | undefined | false
   > {
     const job = await this.client.queuePrompt(-1, this.prompt.workflow);
+
     if (job) {
       const outputMapped = this.prompt.mapOutputKeys;
       const reverseOutputMapped = Object.entries(outputMapped).reduce(
@@ -62,18 +63,43 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
       const { prompt_id } = job;
       const output: Record<keyof T["mapOutputPath"], any> = {} as any;
 
-      // Try to get history if it's already cached
-      const hisData = await this.client.getHistory(prompt_id);
-      if (hisData?.status?.completed) {
-        const outputNodes = hisData.outputs;
-        for (const key in outputMapped) {
-          const node = outputMapped[key];
-          if (node) {
-            output[key as keyof T["mapOutputPath"]] = outputNodes[node];
+      const isCached = await new Promise<boolean>((resolve) => {
+        let checked = false;
+        const checkExecutingFn = (event: CustomEvent) => {
+          if (
+            event.detail &&
+            event.detail.prompt_id === prompt_id &&
+            !checked
+          ) {
+            resolve(false);
           }
+          this.client.off("executing", checkExecutingFn);
+        };
+        const checkExecutedFn = (event: CustomEvent) => {
+          if (event.detail.prompt_id === prompt_id && !checked) {
+            resolve(true);
+          }
+          this.client.off("executed", checkExecutedFn);
+        };
+
+        this.client.on("executing", checkExecutingFn);
+        this.client.on("execution_cached", checkExecutedFn);
+      });
+
+      // Try to get history if it's already cached
+      if (isCached) {
+        const hisData = await this.client.getHistory(prompt_id);
+        if (hisData?.status?.completed) {
+          const outputNodes = hisData.outputs;
+          for (const key in outputMapped) {
+            const node = outputMapped[key];
+            if (node) {
+              output[key as keyof T["mapOutputPath"]] = outputNodes[node];
+            }
+          }
+          this.onFinishedFn?.(output);
+          return output;
         }
-        this.onFinishedFn?.(output);
-        return output;
       }
 
       const executingFn = (ev: CustomEvent) => {
