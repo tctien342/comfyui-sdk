@@ -16,17 +16,19 @@ export class PromptCaller<I extends string = "", O extends string = ""> {
     return this;
   }
 
-  input<T = string | number>(key: I, value: T) {
-    const path = this.mapInputPath[key] as string;
-    if (!path) {
-      throw new Error(`Key ${key} not found`);
+  input<T = string | number | undefined>(key: I, value: T) {
+    if (value !== undefined) {
+      const path = this.mapInputPath[key] as string;
+      if (!path) {
+        throw new Error(`Key ${key} not found`);
+      }
+      const keys = path.split(".");
+      let current = this.prompt as any;
+      for (let i = 0; i < keys.length - 1; i++) {
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = value;
     }
-    const keys = path.split(".");
-    let current = this.prompt as any;
-    for (let i = 0; i < keys.length - 1; i++) {
-      current = current[keys[i]];
-    }
-    current[keys[keys.length - 1]] = value;
     return this;
   }
 
