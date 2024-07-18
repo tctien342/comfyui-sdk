@@ -91,16 +91,15 @@ const generateFn = async (api: ComfyApi) => {
 /**
  * Single shoot
  */
-const output = await ApiPool.run(generateFn);
+// const output = ApiPool.run(generateFn);
 
 /**
  * Multiple shoot using batch
  */
-// const output = await ApiPool.batch([
-//   generateFn,
-//   generateFn,
-//   generateFn,
-//   generateFn,
-// ]);
+const output = await ApiPool.batch(
+  Array(10)
+    .fill("")
+    .map(() => generateFn)
+);
 
 console.log(output.flat());

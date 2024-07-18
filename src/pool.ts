@@ -1,3 +1,4 @@
+import { resolve } from "bun";
 import type { ComfyApi } from "./client";
 import { delay } from "./tools";
 
@@ -92,13 +93,20 @@ export class ComfyPool {
   }
 
   /**
+   * Pick a client from the pool. (Use for call API to get resources), default is first client.
+   */
+  pick(idx: number = 0) {
+    return this.clients[idx];
+  }
+
+  /**
    * Run a task on the pool.
    */
-  run<T>(claim: (client: ComfyApi) => Promise<T>) {
+  run<T>(job: (client: ComfyApi) => Promise<T>) {
     return new Promise<T>((resolve, reject) => {
       this.claim(async (client) => {
         try {
-          resolve(await claim(client));
+          resolve(await job(client));
         } catch (e) {
           console.error(e);
           reject(e);
@@ -110,49 +118,53 @@ export class ComfyPool {
   /**
    * Run a batch of tasks on the pool.
    */
-  batch<T>(claims: ((client: ComfyApi) => Promise<T>)[]) {
-    const promises = claims.map((task) => {
+  batch<T>(jobs: ((client: ComfyApi) => Promise<T>)[]) {
+    const promises = jobs.map((task) => {
       return this.run(task);
     });
     return Promise.all(promises);
   }
 
   private async getAvailableClient() {
-    switch (this.mode) {
-      case EQueueMode.PICK_ZERO: {
-        let found = -1;
-        while (found === -1) {
-          found = this.queueInfo.findIndex((crr, idx) => {
+    return new Promise<ComfyApi>(async (resolve) => {
+      switch (this.mode) {
+        case EQueueMode.PICK_ZERO: {
+          let found = this.queueInfo.findIndex((crr, idx) => {
             if (crr === 0 && !this.pickingInfo[idx]) return true;
             return false;
           });
           if (found === -1) {
             await delay(20);
+            resolve(await this.getAvailableClient());
+          } else {
+            this.queueInfo[found] = 1;
+            this.pickingInfo[found] = true;
+            resolve(this.clients[found]);
           }
+          break;
         }
-        this.queueInfo[found] = 1;
-        this.pickingInfo[found] = true;
-        return this.clients[found];
-      }
-      case EQueueMode.PICK_LOWEST: {
-        // Pick lowest queue remaining
-        let found = -1;
-        let min = Number.MAX_SAFE_INTEGER;
-        for (let i = 0; i < this.queueInfo.length; i++) {
-          if (this.queueInfo[i] < min) {
-            min = this.queueInfo[i];
-            found = i;
+        case EQueueMode.PICK_LOWEST: {
+          // Pick lowest queue remaining
+          let found = -1;
+          let min = Number.MAX_SAFE_INTEGER;
+          for (let i = 0; i < this.queueInfo.length; i++) {
+            if (this.queueInfo[i] < min) {
+              min = this.queueInfo[i];
+              found = i;
+            }
           }
+          this.queueInfo[found] = +1;
+          resolve(this.clients[found]);
+          break;
         }
-        this.queueInfo[found] = +1;
-        return this.clients[found];
+        case EQueueMode.PICK_ROUTINE: {
+          const found = this.routineIdx;
+          this.routineIdx = (this.routineIdx + 1) % this.clients.length;
+          resolve(this.clients[found]);
+          break;
+        }
       }
-      case EQueueMode.PICK_ROUTINE: {
-        const found = this.routineIdx;
-        this.routineIdx = (this.routineIdx + 1) % this.clients.length;
-        return this.clients[found];
-      }
-    }
+    });
   }
 
   private async pickJob() {
