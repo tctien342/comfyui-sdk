@@ -24,12 +24,15 @@ export enum EQueueMode {
 }
 
 export class ComfyPool {
-  clients: ComfyApi[];
+  clients: ComfyApi[] = [];
+
   queueInfo: number[] = [];
   pickingInfo: boolean[] = [];
+  onlineStatus: boolean[] = [];
+
   mode: EQueueMode = EQueueMode.PICK_ZERO;
 
-  jobQueue: ((api: ComfyApi) => Promise<void>)[] = [];
+  jobQueue: ((api: ComfyApi, clientIdx?: number) => Promise<void>)[] = [];
 
   /**
    * This is for PICK_ROUTINE mode
@@ -44,17 +47,8 @@ export class ComfyPool {
    * @param mode - The queue mode for the pool. Defaults to "PICK_ZERO".
    */
   constructor(clients: ComfyApi[], mode: EQueueMode = EQueueMode.PICK_ZERO) {
-    this.clients = clients;
     for (let i = 0; i < clients.length; i++) {
-      this.queueInfo.push(0);
-      this.pickingInfo.push(false);
-      this.clients[i].on("status", (ev) => {
-        this.queueInfo[i] = ev.detail.exec_info.queue_remaining as number;
-        if (this.queueInfo[i] > 0) {
-          this.pickingInfo[i] = false;
-        }
-      });
-      this.clients[i].init();
+      this.addClient(clients[i]);
     }
     this.mode = mode;
     return this;
@@ -64,10 +58,23 @@ export class ComfyPool {
     this.clients.push(client);
     this.queueInfo.push(0);
     this.pickingInfo.push(false);
+    this.onlineStatus.push(false);
     const index = this.clients.length - 1;
-    this.clients[index].on("status", (ev) => {
-      this.queueInfo[index] = ev.detail.exec_info.queue_remaining as number;
+    client.on("status", (ev) => {
+      this.queueInfo[index] = ev.detail.status.exec_info
+        .queue_remaining as number;
+      if (this.queueInfo[index] > 0) {
+        this.pickingInfo[index] = false;
+      }
+      this.onlineStatus[index] = true;
     });
+    client.on("disconnected", () => {
+      this.onlineStatus[index] = false;
+    });
+    client.on("reconnected", () => {
+      this.onlineStatus[index] = true;
+    });
+    this.clients[index].init();
     return this;
   }
 
@@ -86,7 +93,7 @@ export class ComfyPool {
     return this;
   }
 
-  private claim(fn: (client: ComfyApi) => Promise<void>) {
+  private claim(fn: (client: ComfyApi, clientIdx?: number) => Promise<void>) {
     this.jobQueue.push(fn);
     this.pickJob();
   }
@@ -101,11 +108,11 @@ export class ComfyPool {
   /**
    * Run a task on the pool.
    */
-  run<T>(job: (client: ComfyApi) => Promise<T>) {
+  run<T>(job: (client: ComfyApi, clientIdx?: number) => Promise<T>) {
     return new Promise<T>((resolve, reject) => {
-      this.claim(async (client) => {
+      this.claim(async (client, idx) => {
         try {
-          resolve(await job(client));
+          resolve(await job(client, idx));
         } catch (e) {
           console.error(e);
           reject(e);
@@ -117,7 +124,7 @@ export class ComfyPool {
   /**
    * Run a batch of tasks on the pool.
    */
-  batch<T>(jobs: ((client: ComfyApi) => Promise<T>)[]) {
+  batch<T>(jobs: ((client: ComfyApi, clientIdx?: number) => Promise<T>)[]) {
     const promises = jobs.map((task) => {
       return this.run(task);
     });
@@ -129,7 +136,8 @@ export class ComfyPool {
       switch (this.mode) {
         case EQueueMode.PICK_ZERO: {
           let found = this.queueInfo.findIndex((crr, idx) => {
-            if (crr === 0 && !this.pickingInfo[idx]) return true;
+            if (crr === 0 && !this.pickingInfo[idx] && this.onlineStatus[idx])
+              return true;
             return false;
           });
           if (found === -1) {
@@ -147,19 +155,29 @@ export class ComfyPool {
           let found = -1;
           let min = Number.MAX_SAFE_INTEGER;
           for (let i = 0; i < this.queueInfo.length; i++) {
-            if (this.queueInfo[i] < min) {
+            if (this.queueInfo[i] < min && this.onlineStatus[i]) {
               min = this.queueInfo[i];
               found = i;
             }
           }
-          this.queueInfo[found] = +1;
-          resolve(this.clients[found]);
+          if (found === -1) {
+            await delay(20);
+            resolve(await this.getAvailableClient());
+          } else {
+            this.queueInfo[found] = +1;
+            resolve(this.clients[found]);
+          }
           break;
         }
         case EQueueMode.PICK_ROUTINE: {
           const found = this.routineIdx;
-          this.routineIdx = (this.routineIdx + 1) % this.clients.length;
-          resolve(this.clients[found]);
+          if (this.onlineStatus[found]) {
+            resolve(this.clients[found]);
+            this.routineIdx = (this.routineIdx + 1) % this.clients.length;
+          } else {
+            await delay(20);
+            resolve(await this.getAvailableClient());
+          }
           break;
         }
       }
@@ -172,8 +190,8 @@ export class ComfyPool {
     const job = this.jobQueue.shift();
     this.picking = true;
     const client = await this.getAvailableClient();
-    job?.(client).then(() => {
-      const clientIdx = this.clients.indexOf(client);
+    const clientIdx = this.clients.indexOf(client);
+    job?.(client, clientIdx).then(() => {
       this.pickingInfo[clientIdx] = false;
     });
     this.picking = false;

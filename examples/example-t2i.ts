@@ -33,7 +33,7 @@ export const Txt2ImgPrompt = new PromptBuilder(
 /**
  * Initialize the client
  */
-const api = new ComfyApi("http://localhost:8188").init();
+const api = new ComfyApi("http://localhost:8189").init();
 /**
  * Execute the workflow
  */
@@ -43,6 +43,7 @@ const workflow = Txt2ImgPrompt.caller
   .input("step", 20)
   .input("width", 1024)
   .input("height", 1024)
+  .input("batch", 3)
   .input("positive", "A picture miku under space");
 
 new CallWrapper<typeof workflow>(api, workflow)
@@ -54,5 +55,5 @@ new CallWrapper<typeof workflow>(api, workflow)
   .onProgress((info) =>
     console.log("Processing node", info.node, `${info.value}/${info.max}`)
   )
-  .onFailed(() => console.log("Task is failed"))
+  .onFailed((err) => console.log("Task is failed", err))
   .run();

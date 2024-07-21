@@ -16,26 +16,13 @@ import {
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
+import type { TComfyAPIEventMap, TEventKey } from "../types/event";
 
 interface FetchOptions extends RequestInit {
   headers?: {
     [key: string]: string;
   };
 }
-
-type TEventKey =
-  | "all"
-  | "status"
-  | "progress"
-  | "executing"
-  | "executed"
-  | "execution_start"
-  | "execution_error"
-  | "execution_cached"
-  | "crystools.monitor"
-  | "reconnected"
-  | "reconnecting"
-  | "b_preview";
 
 export class ComfyApi extends EventTarget {
   private apiHost: string;
@@ -51,17 +38,18 @@ export class ComfyApi extends EventTarget {
     );
   }
 
-  public on(
-    type: TEventKey,
-    callback: (event: CustomEvent) => void,
+  public on<K extends keyof TComfyAPIEventMap>(
+    type: K,
+    callback: (event: TComfyAPIEventMap[K]) => void,
     options?: AddEventListenerOptions | boolean
-  ): void {
+  ) {
     this.addEventListener(type, callback as any, options);
+    return () => this.off(type, callback);
   }
 
-  public off(
-    type: TEventKey,
-    callback: (event: CustomEvent) => void,
+  public off<K extends keyof TComfyAPIEventMap>(
+    type: K,
+    callback: (event: TComfyAPIEventMap[K]) => void,
     options?: EventListenerOptions | boolean
   ): void {
     this.removeEventListener(type, callback as any, options);
@@ -555,7 +543,7 @@ export class ComfyApi extends EventTarget {
         this.createSocket(true);
       }, 300);
       if (opened) {
-        this.dispatchEvent(new CustomEvent("status", { detail: null }));
+        this.dispatchEvent(new CustomEvent("disconnected"));
         this.dispatchEvent(new CustomEvent("reconnecting"));
       }
     });
@@ -593,64 +581,14 @@ export class ComfyApi extends EventTarget {
           }
         } else if (typeof event.data === "string") {
           const msg = JSON.parse(event.data);
-          if (msg.type !== "crystools.monitor") {
-            this.dispatchEvent(new CustomEvent("all", { detail: msg }));
-          }
-          switch (msg.type) {
-            case "status":
-              if (msg.data.sid) {
-                this.clientId = msg.data.sid;
-              }
-              this.dispatchEvent(
-                new CustomEvent("status", { detail: msg.data.status })
-              );
-              break;
-            case "progress":
-              this.dispatchEvent(
-                new CustomEvent("progress", { detail: msg.data })
-              );
-              break;
-            case "executing":
-              this.dispatchEvent(
-                new CustomEvent("executing", { detail: msg.data.node })
-              );
-              break;
-            case "executed":
-              this.dispatchEvent(
-                new CustomEvent("executed", { detail: msg.data })
-              );
-              break;
-            case "execution_start":
-              this.dispatchEvent(
-                new CustomEvent("execution_start", { detail: msg.data })
-              );
-              break;
-            case "execution_error":
-              this.dispatchEvent(
-                new CustomEvent("execution_error", { detail: msg.data })
-              );
-              break;
-            case "execution_cached":
-              this.dispatchEvent(
-                new CustomEvent("execution_cached", { detail: msg.data })
-              );
-              break;
-            case "crystools.monitor":
-              this.dispatchEvent(
-                new CustomEvent("crystools.monitor", { detail: msg.data })
-              );
-              break;
-            default:
-              if (this.registered.has(msg.type)) {
-                this.dispatchEvent(
-                  new CustomEvent(msg.type, { detail: msg.data })
-                );
-              } else {
-                console.warn("Unhandled event from server", msg.type, msg.data);
-              }
+          if (!msg.data || !msg.type) return;
+          this.dispatchEvent(new CustomEvent("all", { detail: msg }));
+          this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+          if (msg.data.sid) {
+            this.clientId = msg.data.sid;
           }
         } else {
-          console.warn("Unhandled message:", event.data);
+          console.warn("Unhandled message:", event);
         }
       } catch (error) {
         console.warn("Unhandled message:", event.data, error);

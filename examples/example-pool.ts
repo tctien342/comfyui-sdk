@@ -41,8 +41,8 @@ export const Txt2ImgPrompt = new PromptBuilder(
  */
 const ApiPool = new ComfyPool(
   [
-    new ComfyApi("http://192.168.15.204:8188"), // Comfy Instance 1
-    new ComfyApi("http://192.168.15.204:8189"), // Comfy Instance 2
+    new ComfyApi("http://localhost:8188"), // Comfy Instance 1
+    new ComfyApi("http://localhost:8189"), // Comfy Instance 2
   ],
   EQueueMode.PICK_ZERO
 );
@@ -52,9 +52,9 @@ function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-const generateFn = async (api: ComfyApi) => {
+const generateFn = async (api: ComfyApi, clientIdx?: number) => {
   return new Promise<string[]>((resolve) => {
-    const seed = 10;
+    const seed = randomInt(100000000, 999999999);
     const workflow = Txt2ImgPrompt.caller
       .input("seed", seed)
       .input("step", 16)
@@ -67,10 +67,12 @@ const generateFn = async (api: ComfyApi) => {
       .input("negative", "text, blurry, bad picture, nsfw");
 
     new CallWrapper<typeof workflow>(api, workflow)
-      .onStart(() => console.log(`#${seed}`, "Task is started"))
-      .onPreview((blob) => console.log(`#${seed}`, blob))
+      .onStart(() =>
+        console.log(`[${clientIdx}]`, `#${seed}`, "Task is started")
+      )
+      .onPreview((blob) => console.log(`[${clientIdx}]`, `#${seed}`, blob))
       .onFinished((data) => {
-        console.log(`#${seed}`, "Task is finished");
+        console.log(`[${clientIdx}]`, `#${seed}`, "Task is finished");
         const url = data.images?.images.map((img: any) =>
           api.getPathImage(img)
         );
@@ -78,13 +80,16 @@ const generateFn = async (api: ComfyApi) => {
       })
       .onProgress((info) =>
         console.log(
+          `[${clientIdx}]`,
           `#${seed}`,
           "Processing node",
           info.node,
           `${info.value}/${info.max}`
         )
       )
-      .onFailed(() => console.log(`#${seed}`, "Task is failed"))
+      .onFailed(() =>
+        console.log(`[${clientIdx}]`, `#${seed}`, "Task is failed")
+      )
       .run();
   });
 };
