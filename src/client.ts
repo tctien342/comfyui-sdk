@@ -517,8 +517,14 @@ export class ComfyApi extends EventTarget {
     return this;
   }
 
-  ping() {
-    this.fetchApi("/ping");
+  /**
+   * Sends a ping request to the server and returns a boolean indicating whether the server is reachable.
+   * @returns A promise that resolves to `true` if the server is reachable, or `false` otherwise.
+   */
+  async ping() {
+    return this.pollStatus(5000)
+      .then(() => true)
+      .catch(() => false);
   }
 
   /**
