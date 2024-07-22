@@ -71,24 +71,27 @@ const generateFn = async (api: ComfyApi) => {
       .input("negative", "text, blurry, bad picture, nsfw");
 
     new CallWrapper<typeof workflow>(api, workflow)
-      .onStart(() => console.log(`#${seed}`, "Task is started"))
-      .onPreview((blob) => console.log(`#${seed}`, blob))
-      .onFinished((data) => {
-        console.log(`#${seed}`, "Task is finished");
+      .onStart((promptId) => console.log(`#${promptId}`, "Task is started"))
+      .onPreview((blob, promptId) => console.log(`#${promptId}`, blob))
+      .onFinished((data, promptId) => {
+        console.log(`#${promptId}`, "Task is finished");
         const url = data.images?.images.map((img: any) =>
           api.getPathImage(img)
         );
         resolve(url);
       })
-      .onProgress((info) =>
+      .onProgress((info, promptId) =>
         console.log(
-          `#${seed}`,
+          `#${promptId}`,
           "Processing node",
           info.node,
           `${info.value}/${info.max}`
         )
       )
-      .onFailed(() => console.log(`#${seed}`, "Task is failed"))
+      .onFailed((err, promptId) =>
+        console.log(`#${promptId}`, "Task is failed", err)
+        resolve([]);
+      )
       .run();
   });
 };
@@ -144,7 +147,7 @@ const api = new ComfyApi("https://comfyui.instance:8188", "your-client-id");
 
 ### Event Handling
 
-- **on(type, callback, options?)**: Register an event listener.
+- **on(type, callback, options?)**: Register an event listener. Return off function to remove the listener.
 - **off(type, callback, options?)**: Unregister an event listener.
 
 ### General
@@ -156,10 +159,10 @@ const api = new ComfyApi("https://comfyui.instance:8188", "your-client-id");
 - **getHistory(promptId)**: Retrieves the history entry for a given prompt ID.
 - **getSystemStats()**: Retrieves system and device stats.
 - **getExtensions()**: Retrieves a list of extension URLs.
+
+### Checkpoints, Loras, Embeddings and Samplers
+
 - **getEmbeddings()**: Retrieves a list of embedding names.
-
-### Checkpoints, Loras, and Samplers
-
 - **getCheckpoints()**: Retrieves checkpoints from the server.
 - **getLoras()**: Retrieves Loras from the node definitions.
 - **getSamplerInfo()**: Retrieves sampler and scheduler information.
@@ -206,11 +209,11 @@ const api = new ComfyApi("https://comfyui.instance:8188", "your-client-id");
 
 ### Event Handling
 
-- **onPreview(fn: (ev: Blob) => void)**: Registers a callback for preview images.
-- **onStart(fn: () => void)**: Registers a callback for when the prompt starts.
-- **onFinished(fn: (data: Record<keyof T["mapOutputPath"], any>) => void)**: Registers a callback for when the prompt finishes.
-- **onFailed(fn: () => void)**: Registers a callback for when the prompt fails.
-- **onProgress(fn: (info: NodeProgress) => void)**: Registers a callback for progress updates.
+- **onPreview(fn: (ev: Blob, promptId: string) => void)**: Registers a callback for preview images.
+- **onStart(fn: (promptId: string) => void)**: Registers a callback for when the prompt starts.
+- **onFinished(fn: (data: Record<keyof T["mapOutputPath"], any>, promptId: string) => void)**: Registers a callback for when the prompt finishes.
+- **onFailed(fn: (error: Error, promptId: string) => void)**: Registers a callback for when the prompt fails.
+- **onProgress(fn: (info: NodeProgress, promptId: string) => void)**: Registers a callback for progress updates.
 
 ### Execution
 
@@ -289,9 +292,10 @@ console.log("Mapped Outputs:", caller.mapOutputKeys);
 
 - **addClient(client: ComfyApi)**: Adds a new `ComfyApi` client to the pool.
 - **removeClient(client: ComfyApi)**: Removes a `ComfyApi` client from the pool.
+- **removeClientByIndex(index: number)**: Removes a `ComfyApi` client from the pool by index.
 - **changeMode(mode: EQueueMode)**: Changes the queue mode of the pool.
-- **run<T>(claim: (client: ComfyApi) => Promise<T>)**: Runs a task on the pool and returns a promise that resolves with the result.
-- **batch<T>(claims: ((client: ComfyApi) => Promise<T>)[])**: Runs a batch of tasks on the pool and returns a promise that resolves with the results.
+- **run<T>(claim: (client: ComfyApi, clientIdx?: number) => Promise<T>)**: Runs a task on the pool and returns a promise that resolves with the result.
+- **batch<T>(claims: ((client: ComfyApi, clientIdx?: number) => Promise<T>)[])**: Runs a batch of tasks on the pool and returns a promise that resolves with the results.
 
 ## Contributing
 

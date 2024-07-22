@@ -6,21 +6,25 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   private client: ComfyApi;
   private prompt: T;
   private started = false;
+  private promptId?: string;
   private output: Record<keyof T["mapOutputPath"], any> = {} as any;
 
-  private onPreviewFn?: (ev: Blob) => void;
-  private onStartFn?: () => void;
-  private onFinishedFn?: (data: Record<keyof T["mapOutputPath"], any>) => void;
-  private onFailedFn?: (err: Error) => void;
-  private onProgressFn?: (info: NodeProgress) => void;
+  private onPreviewFn?: (ev: Blob, promptId?: string) => void;
+  private onStartFn?: (promptId?: string) => void;
+  private onFinishedFn?: (
+    data: Record<keyof T["mapOutputPath"], any>,
+    promptId?: string
+  ) => void;
+  private onFailedFn?: (err: Error, promptId?: string) => void;
+  private onProgressFn?: (info: NodeProgress, promptId?: string) => void;
 
-  private onDisconnectedHandler: any;
-  private checkExecutingFn: any;
-  private checkExecutedFn: any;
-  private progressHandler: any;
-  private previewHandler: any;
-  private executionHandler: any;
-  private errorHandler: any;
+  private onDisconnectedHandlerOffFn: any;
+  private checkExecutingOffFn: any;
+  private checkExecutedOffFn: any;
+  private progressHandlerOffFn: any;
+  private previewHandlerOffFn: any;
+  private executionHandlerOffFn: any;
+  private errorHandlerOffFn: any;
 
   constructor(client: ComfyApi, workflow: T) {
     this.client = client;
@@ -28,27 +32,29 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
     return this;
   }
 
-  onPreview(fn: (ev: Blob) => void) {
+  onPreview(fn: (ev: Blob, promptId?: string) => void) {
     this.onPreviewFn = fn;
     return this;
   }
 
-  onStart(fn: () => void) {
+  onStart(fn: (promptId?: string) => void) {
     this.onStartFn = fn;
     return this;
   }
 
-  onFinished(fn: (data: Record<keyof T["mapOutputPath"], any>) => void) {
+  onFinished(
+    fn: (data: Record<keyof T["mapOutputPath"], any>, promptId?: string) => void
+  ) {
     this.onFinishedFn = fn;
     return this;
   }
 
-  onFailed(fn: (err: Error) => void) {
+  onFailed(fn: (err: Error, promptId?: string) => void) {
     this.onFailedFn = fn;
     return this;
   }
 
-  onProgress(fn: (info: NodeProgress) => void) {
+  onProgress(fn: (info: NodeProgress, promptId?: string) => void) {
     this.onProgressFn = fn;
     return this;
   }
@@ -75,8 +81,9 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
       return;
     }
 
-    this.onDisconnectedHandler = this.client.on("disconnected", () =>
-      this.onFailedFn?.(new Error("Disconnected"))
+    this.promptId = job.prompt_id;
+    this.onDisconnectedHandlerOffFn = this.client.on("disconnected", () =>
+      this.onFailedFn?.(new Error("Disconnected"), this.promptId)
     );
     return job;
   }
@@ -99,8 +106,8 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
         this.client.off("executed", checkExecutedFn);
       };
 
-      this.checkExecutingFn = this.client.on("executing", checkExecutingFn);
-      this.checkExecutedFn = this.client.on(
+      this.checkExecutingOffFn = this.client.on("executing", checkExecutingFn);
+      this.checkExecutedOffFn = this.client.on(
         "execution_cached",
         checkExecutedFn
       );
@@ -113,7 +120,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
     const hisData = await this.client.getHistory(promptId);
     if (hisData?.status?.completed) {
       const output = this.mapOutput(hisData.outputs);
-      this.onFinishedFn?.(output);
+      this.onFinishedFn?.(output, this.promptId);
       return output;
     }
     return false;
@@ -138,11 +145,11 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   ): Promise<Record<keyof T["mapOutputPath"], any> | false> {
     const reverseOutputMapped = this.reverseMapOutputKeys();
 
-    this.progressHandler = this.client.on("progress", (ev) =>
+    this.progressHandlerOffFn = this.client.on("progress", (ev) =>
       this.handleProgress(ev, promptId)
     );
-    this.previewHandler = this.client.on("b_preview", (ev) =>
-      this.onPreviewFn?.(ev.detail)
+    this.previewHandlerOffFn = this.client.on("b_preview", (ev) =>
+      this.onPreviewFn?.(ev.detail, this.promptId)
     );
 
     return new Promise<Record<keyof T["mapOutputPath"], any> | false>(
@@ -164,13 +171,16 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
 
           if (totalOutput === 0) {
             this.cleanupListeners();
-            this.onFinishedFn?.(this.output);
+            this.onFinishedFn?.(this.output, this.promptId);
             resolve(this.output);
           }
         };
 
-        this.executionHandler = this.client.on("executed", executionHandler);
-        this.errorHandler = this.client.on("execution_error", (ev) =>
+        this.executionHandlerOffFn = this.client.on(
+          "executed",
+          executionHandler
+        );
+        this.errorHandlerOffFn = this.client.on("execution_error", (ev) =>
           this.handleError(ev, promptId, resolve)
         );
       }
@@ -188,9 +198,9 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   private handleProgress(ev: CustomEvent, promptId: string) {
     if (ev.detail.prompt_id === promptId && !this.started) {
       this.started = true;
-      this.onStartFn?.();
+      this.onStartFn?.(this.promptId);
     }
-    this.onProgressFn?.(ev.detail);
+    this.onProgressFn?.(ev.detail, this.promptId);
   }
 
   private handleError(
@@ -200,19 +210,17 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   ) {
     if (ev.detail.prompt_id !== promptId) return;
     this.cleanupListeners();
-    console.log(ev.detail);
-    this.onFailedFn?.(new Error(ev.detail.exception_type));
+    this.onFailedFn?.(new Error(ev.detail.exception_type), this.promptId);
     resolve(false);
   }
 
   private cleanupListeners() {
-    // Implement cleanup of listeners to avoid memory leaks
-    this.client.off("disconnected", this.onDisconnectedHandler);
-    this.client.off("executing", this.checkExecutingFn);
-    this.client.off("execution_cached", this.checkExecutedFn);
-    this.client.off("progress", this.progressHandler);
-    this.client.off("b_preview", this.previewHandler);
-    this.client.off("executed", this.executionHandler);
-    this.client.off("execution_error", this.errorHandler);
+    this.onDisconnectedHandlerOffFn();
+    this.checkExecutingOffFn();
+    this.checkExecutedOffFn();
+    this.progressHandlerOffFn();
+    this.previewHandlerOffFn();
+    this.executionHandlerOffFn();
+    this.errorHandlerOffFn();
   }
 }

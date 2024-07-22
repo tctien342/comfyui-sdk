@@ -16,7 +16,7 @@ import {
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
-import type { TComfyAPIEventMap, TEventKey } from "../types/event";
+import type { TComfyAPIEventMap } from "../types/event";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -29,7 +29,6 @@ export class ComfyApi extends EventTarget {
   private apiBase: string;
   private clientId: string | null;
   private socket: WebSocket | null = null;
-  private registered: Set<string> = new Set();
 
   static generateId(): string {
     return (
@@ -89,9 +88,22 @@ export class ComfyApi extends EventTarget {
    * Polls the status for colab and other things that don't support websockets.
    * @returns {Promise<QueueStatus>} The status information.
    */
-  async pollStatus(): Promise<QueueStatus> {
-    const response = await this.fetchApi("/prompt");
-    return response.json();
+  async pollStatus(timeout = 1000): Promise<QueueStatus> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await this.fetchApi("/prompt", {
+        signal: controller.signal,
+      });
+      return response.json();
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        throw new Error("Request timed out");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
@@ -503,6 +515,10 @@ export class ComfyApi extends EventTarget {
   init() {
     this.createSocket();
     return this;
+  }
+
+  ping() {
+    this.fetchApi("/ping");
   }
 
   /**

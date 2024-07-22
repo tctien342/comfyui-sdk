@@ -41,8 +41,8 @@ export const Txt2ImgPrompt = new PromptBuilder(
  */
 const ApiPool = new ComfyPool(
   [
-    new ComfyApi("http://localhost:8188"), // Comfy Instance 1
-    new ComfyApi("http://localhost:8189"), // Comfy Instance 2
+    new ComfyApi("http://192.168.15.204:8188"), // Comfy Instance 1
+    new ComfyApi("http://192.168.15.204:8189"), // Comfy Instance 2
   ],
   EQueueMode.PICK_ZERO
 );
@@ -53,8 +53,8 @@ function randomInt(min: number, max: number) {
 }
 
 const generateFn = async (api: ComfyApi, clientIdx?: number) => {
+  const seed = randomInt(100000000, 999999999);
   return new Promise<string[]>((resolve) => {
-    const seed = randomInt(100000000, 999999999);
     const workflow = Txt2ImgPrompt.caller
       .input("seed", seed)
       .input("step", 16)
@@ -67,29 +67,32 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
       .input("negative", "text, blurry, bad picture, nsfw");
 
     new CallWrapper<typeof workflow>(api, workflow)
-      .onStart(() =>
-        console.log(`[${clientIdx}]`, `#${seed}`, "Task is started")
+      .onStart((promptId) =>
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is started")
       )
-      .onPreview((blob) => console.log(`[${clientIdx}]`, `#${seed}`, blob))
-      .onFinished((data) => {
-        console.log(`[${clientIdx}]`, `#${seed}`, "Task is finished");
+      .onPreview((blob, promptId) =>
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Blob size", blob.size)
+      )
+      .onFinished((data, promptId) => {
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is finished");
         const url = data.images?.images.map((img: any) =>
           api.getPathImage(img)
         );
-        resolve(url);
+        resolve(url as string[]);
       })
-      .onProgress((info) =>
+      .onProgress((info, promptId) => {
         console.log(
           `[${clientIdx}]`,
-          `#${seed}`,
+          `#${promptId}`,
           "Processing node",
           info.node,
           `${info.value}/${info.max}`
-        )
-      )
-      .onFailed(() =>
-        console.log(`[${clientIdx}]`, `#${seed}`, "Task is failed")
-      )
+        );
+      })
+      .onFailed((err, promptId) => {
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is failed", err);
+        resolve([]);
+      })
       .run();
   });
 };
