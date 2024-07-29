@@ -4,9 +4,10 @@ import { ComfyPool, EQueueMode } from "../src/pool";
 import { PromptBuilder } from "../src/prompt-builder";
 import ExampleTxt2ImgWorkflow from "./example-txt2img-workflow.json";
 import type { TSamplerName, TSchedulerName } from "../types/sampler";
+import { seed } from "../src/tools";
 
 /**
- * Define a prompt for text to image task
+ * Define a T2I (text to image) workflow task
  */
 export const Txt2ImgPrompt = new PromptBuilder(
   ExampleTxt2ImgWorkflow, // Get from `Save (API Format)` button in ComfyUI's website
@@ -17,6 +18,9 @@ export const Txt2ImgPrompt = new PromptBuilder(
     "seed",
     "batch",
     "step",
+    "cfg",
+    "sampler",
+    "sheduler",
     "width",
     "height",
     "sampler",
@@ -32,6 +36,7 @@ export const Txt2ImgPrompt = new PromptBuilder(
   .setInputNode("step", "3.inputs.steps")
   .setInputNode("width", "5.inputs.width")
   .setInputNode("height", "5.inputs.height")
+  .setInputNode("cfg", "3.inputs.cfg")
   .setInputNode("sampler", "3.inputs.sampler_name")
   .setInputNode("scheduler", "3.inputs.scheduler")
   .setOutputNode("images", "9");
@@ -47,26 +52,33 @@ const ApiPool = new ComfyPool(
   EQueueMode.PICK_ZERO
 );
 
-// Fn to random Int
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
+/**
+ * Define the generator function for all nodes
+ */
 const generateFn = async (api: ComfyApi, clientIdx?: number) => {
-  const seed = randomInt(100000000, 999999999);
   return new Promise<string[]>((resolve) => {
-    const workflow = Txt2ImgPrompt.caller
-      .input("seed", seed)
-      .input("step", 16)
+    /**
+     * Set the workflow's input values
+     */
+    const workflow = Txt2ImgPrompt.input(
+      "checkpoint",
+      "SDXL/realvisxlV40_v40LightningBakedvae.safetensors"
+    )
+      .input("seed", seed())
+      .input("step", 6)
       .input("width", 512)
       .input("height", 512)
       .input("batch", 2)
-      .input<TSamplerName>("sampler", "uni_pc")
+      .input("cfg", 1)
+      .input<TSamplerName>("sampler", "dpmpp_2m_sde_gpu")
       .input<TSchedulerName>("scheduler", "sgm_uniform")
       .input("positive", "A close up picture of cute Cat")
       .input("negative", "text, blurry, bad picture, nsfw");
 
     new CallWrapper<typeof workflow>(api, workflow)
+      .onPending((promptId) =>
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is pending")
+      )
       .onStart((promptId) =>
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is started")
       )

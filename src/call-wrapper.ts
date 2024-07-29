@@ -1,18 +1,23 @@
 import type { NodeProgress } from "../types/api";
 import type { ComfyApi } from "./client";
-import type { PromptCaller } from "./prompt-builder";
+import type { PromptBuilder } from "./prompt-builder";
 
-export class CallWrapper<T extends PromptCaller<string, string>> {
+/**
+ * Represents a wrapper class for making API calls using the ComfyApi client.
+ * Provides methods for setting callback functions and executing the job.
+ */
+export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   private client: ComfyApi;
   private prompt: T;
   private started = false;
   private promptId?: string;
-  private output: Record<keyof T["mapOutputPath"], any> = {} as any;
+  private output: Record<keyof T["mapOutputKeys"], any> = {} as any;
 
   private onPreviewFn?: (ev: Blob, promptId?: string) => void;
+  private onPendingFn?: (promptId?: string) => void;
   private onStartFn?: (promptId?: string) => void;
   private onFinishedFn?: (
-    data: Record<keyof T["mapOutputPath"], any>,
+    data: Record<keyof T["mapOutputKeys"], any>,
     promptId?: string
   ) => void;
   private onFailedFn?: (err: Error, promptId?: string) => void;
@@ -26,41 +31,96 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   private executionHandlerOffFn: any;
   private errorHandlerOffFn: any;
 
+  /**
+   * Constructs a new CallWrapper instance.
+   * @param client The ComfyApi client.
+   * @param workflow The workflow object.
+   */
   constructor(client: ComfyApi, workflow: T) {
     this.client = client;
     this.prompt = workflow;
     return this;
   }
 
+  /**
+   * Set the callback function to be called when a preview event occurs.
+   *
+   * @param fn - The callback function to be called. It receives a Blob object representing the event and an optional promptId string.
+   * @returns The current instance of the CallWrapper.
+   */
   onPreview(fn: (ev: Blob, promptId?: string) => void) {
     this.onPreviewFn = fn;
     return this;
   }
 
+  /**
+   * Set a callback function to be executed when the job is queued.
+   * @param {Function} fn - The callback function to be executed.
+   * @returns The current instance of the CallWrapper.
+   */
+  onPending(fn: (promptId?: string) => void) {
+    this.onPendingFn = fn;
+    return this;
+  }
+
+  /**
+   * Set the callback function to be executed when the job start.
+   *
+   * @param fn - The callback function to be executed. It can optionally receive a `promptId` parameter.
+   * @returns The current instance of the CallWrapper.
+   */
   onStart(fn: (promptId?: string) => void) {
     this.onStartFn = fn;
     return this;
   }
 
+  /**
+   * Set the callback function to be executed when the asynchronous operation is finished.
+   *
+   * @param fn - The callback function to be executed. It receives the data returned by the operation
+   *             and an optional promptId parameter.
+   * @returns The current instance of the CallWrapper.
+   */
   onFinished(
-    fn: (data: Record<keyof T["mapOutputPath"], any>, promptId?: string) => void
+    fn: (data: Record<keyof T["mapOutputKeys"], any>, promptId?: string) => void
   ) {
     this.onFinishedFn = fn;
     return this;
   }
 
+  /**
+   * Set the callback function to be executed when the API call fails.
+   *
+   * @param fn - The callback function to be executed when the API call fails.
+   *             It receives an `Error` object as the first parameter and an optional `promptId` as the second parameter.
+   * @returns The current instance of the CallWrapper.
+   */
   onFailed(fn: (err: Error, promptId?: string) => void) {
     this.onFailedFn = fn;
     return this;
   }
 
+  /**
+   * Set a callback function to be called when progress information is available.
+   * @param fn - The callback function to be called with the progress information.
+   * @returns The current instance of the CallWrapper.
+   */
   onProgress(fn: (info: NodeProgress, promptId?: string) => void) {
     this.onProgressFn = fn;
     return this;
   }
 
+  /**
+   * Run the call wrapper and returns the output of the executed job.
+   * If the job is already cached, it returns the cached output.
+   * If the job is not cached, it executes the job and returns the output.
+   *
+   * @returns A promise that resolves to the output of the executed job,
+   *          or `undefined` if the job is not found,
+   *          or `false` if the job execution fails.
+   */
   async run(): Promise<
-    Record<keyof T["mapOutputPath"], any> | undefined | false
+    Record<keyof T["mapOutputKeys"], any> | undefined | false
   > {
     const job = await this.enqueueJob();
     if (!job) return;
@@ -82,6 +142,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
     }
 
     this.promptId = job.prompt_id;
+    this.onPendingFn?.(this.promptId);
     this.onDisconnectedHandlerOffFn = this.client.on("disconnected", () =>
       this.onFailedFn?.(new Error("Disconnected"), this.promptId)
     );
@@ -116,7 +177,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
 
   private async handleCachedOutput(
     promptId: string
-  ): Promise<Record<keyof T["mapOutputPath"], any> | false> {
+  ): Promise<Record<keyof T["mapOutputKeys"], any> | false> {
     const hisData = await this.client.getHistory(promptId);
     if (hisData?.status?.completed) {
       const output = this.mapOutput(hisData.outputs);
@@ -126,14 +187,14 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
     return false;
   }
 
-  private mapOutput(outputNodes: any): Record<keyof T["mapOutputPath"], any> {
+  private mapOutput(outputNodes: any): Record<keyof T["mapOutputKeys"], any> {
     const outputMapped = this.prompt.mapOutputKeys;
-    const output: Record<keyof T["mapOutputPath"], any> = {} as any;
+    const output: Record<keyof T["mapOutputKeys"], any> = {} as any;
 
     for (const key in outputMapped) {
       const node = outputMapped[key];
       if (node) {
-        output[key as keyof T["mapOutputPath"]] = outputNodes[node];
+        output[key as keyof T["mapOutputKeys"]] = outputNodes[node];
       }
     }
 
@@ -142,7 +203,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
 
   private handleJobExecution(
     promptId: string
-  ): Promise<Record<keyof T["mapOutputPath"], any> | false> {
+  ): Promise<Record<keyof T["mapOutputKeys"], any> | false> {
     const reverseOutputMapped = this.reverseMapOutputKeys();
 
     this.progressHandlerOffFn = this.client.on("progress", (ev) =>
@@ -152,7 +213,7 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
       this.onPreviewFn?.(ev.detail, this.promptId)
     );
 
-    return new Promise<Record<keyof T["mapOutputPath"], any> | false>(
+    return new Promise<Record<keyof T["mapOutputKeys"], any> | false>(
       (resolve) => {
         let totalOutput = Object.keys(reverseOutputMapped).length;
 
@@ -161,10 +222,10 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
 
           const outputKey =
             reverseOutputMapped[
-              ev.detail.node as keyof typeof this.prompt.mapOutputPath
+              ev.detail.node as keyof typeof this.prompt.mapOutputKeys
             ];
           if (outputKey) {
-            this.output[outputKey as keyof T["mapOutputPath"]] =
+            this.output[outputKey as keyof T["mapOutputKeys"]] =
               ev.detail.output;
             totalOutput--;
           }
@@ -206,11 +267,14 @@ export class CallWrapper<T extends PromptCaller<string, string>> {
   private handleError(
     ev: CustomEvent,
     promptId: string,
-    resolve: (value: Record<keyof T["mapOutputPath"], any> | false) => void
+    resolve: (value: Record<keyof T["mapOutputKeys"], any> | false) => void
   ) {
     if (ev.detail.prompt_id !== promptId) return;
     this.cleanupListeners();
-    this.onFailedFn?.(new Error(ev.detail.exception_type), this.promptId);
+    this.onFailedFn?.(
+      new Error(ev.detail.exception_type, { cause: ev.detail }),
+      this.promptId
+    );
     resolve(false);
   }
 

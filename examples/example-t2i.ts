@@ -1,10 +1,12 @@
 import { CallWrapper } from "../src/call-wrapper";
 import { ComfyApi } from "../src/client";
 import { PromptBuilder } from "../src/prompt-builder";
+import { seed } from "../src/tools";
+import { type TSchedulerName, type TSamplerName } from "../types/sampler";
 import ExampleTxt2ImgWorkflow from "./example-txt2img-workflow.json";
 
 /**
- * Define a prompt for image to image task
+ * Define a T2I (text to image) workflow task
  */
 export const Txt2ImgPrompt = new PromptBuilder(
   ExampleTxt2ImgWorkflow,
@@ -15,6 +17,9 @@ export const Txt2ImgPrompt = new PromptBuilder(
     "seed",
     "batch",
     "step",
+    "cfg",
+    "sampler",
+    "sheduler",
     "width",
     "height",
   ],
@@ -25,6 +30,9 @@ export const Txt2ImgPrompt = new PromptBuilder(
   .setInputNode("batch", "5.inputs.batch_size")
   .setInputNode("negative", "7.inputs.text")
   .setInputNode("positive", "6.inputs.text")
+  .setInputNode("cfg", "3.inputs.cfg")
+  .setInputNode("sampler", "3.inputs.sampler_name")
+  .setInputNode("sheduler", "3.inputs.scheduler")
   .setInputNode("step", "3.inputs.steps")
   .setInputNode("width", "5.inputs.width")
   .setInputNode("height", "5.inputs.height")
@@ -34,19 +42,29 @@ export const Txt2ImgPrompt = new PromptBuilder(
  * Initialize the client
  */
 const api = new ComfyApi("http://localhost:8189").init();
+
+/**
+ * Set the workflow's input values
+ */
+const workflow = Txt2ImgPrompt.input(
+  "checkpoint",
+  "SDXL/realvisxlV40_v40LightningBakedvae.safetensors"
+)
+  .input("seed", seed())
+  .input("step", 6)
+  .input("cfg", 1)
+  .input<TSamplerName>("sampler", "dpmpp_2m_sde_gpu")
+  .input<TSchedulerName>("sheduler", "sgm_uniform")
+  .input("width", 1024)
+  .input("height", 1024)
+  .input("batch", 1)
+  .input("positive", "A picture of cute dog on the street");
+
 /**
  * Execute the workflow
  */
-
-const workflow = Txt2ImgPrompt.caller
-  .input("seed", 23141223291)
-  .input("step", 20)
-  .input("width", 1024)
-  .input("height", 1024)
-  .input("batch", 3)
-  .input("positive", "A picture miku under space");
-
 new CallWrapper<typeof workflow>(api, workflow)
+  .onPending(() => console.log("Task is pending"))
   .onStart(() => console.log("Task is started"))
   .onPreview((blob) => console.log(blob))
   .onFinished((data) => {

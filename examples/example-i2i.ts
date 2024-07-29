@@ -2,9 +2,11 @@ import { ComfyApi } from "../src/client";
 import { CallWrapper } from "../src/call-wrapper";
 import { PromptBuilder } from "../src/prompt-builder";
 import ExampleImg2ImgWorkflow from "./example-img2img-workflow.json";
+import type { TSamplerName, TSchedulerName } from "../types/sampler";
+import { seed } from "../src/tools";
 
 /**
- * Define a prompt for image to image task
+ * Define a I2I (image to image) workflow task
  */
 export const Img2ImgPrompt = new PromptBuilder(
   ExampleImg2ImgWorkflow,
@@ -14,6 +16,9 @@ export const Img2ImgPrompt = new PromptBuilder(
     "positive",
     "negative",
     "checkpoint",
+    "cfg",
+    "sampler",
+    "sheduler",
     "seed",
     "step",
     "width",
@@ -27,6 +32,9 @@ export const Img2ImgPrompt = new PromptBuilder(
   .setInputNode("seed", "3.inputs.seed")
   .setInputNode("negative", "7.inputs.text")
   .setInputNode("positive", "6.inputs.text")
+  .setInputNode("cfg", "3.inputs.cfg")
+  .setInputNode("sampler", "3.inputs.sampler_name")
+  .setInputNode("sheduler", "3.inputs.scheduler")
   .setInputNode("step", "3.inputs.steps")
   .setInputNode("width", "12.inputs.width")
   .setInputNode("height", "12.inputs.height")
@@ -35,10 +43,10 @@ export const Img2ImgPrompt = new PromptBuilder(
 /**
  * Initialize the client
  */
-const api = new ComfyApi("http://localhost:8188").init();
+const api = new ComfyApi("http://localhost:8189").init();
 
 /**
- * Execute the workflow
+ * Upload the source image to the server
  */
 const exampleTomImg =
   "https://www.redwolf.in/image/cache/catalog/stickers/tom-face-sticker-india-600x800.jpg";
@@ -50,19 +58,31 @@ const uploadedImg = await api.uploadImage(
 );
 if (!uploadedImg) {
   throw new Error("Failed to upload image");
+} else {
+  console.log("Uploaded source image", uploadedImg.url);
 }
 
-const workflow = Img2ImgPrompt.caller
+/**
+ * Set the workflow's input values
+ */
+const workflow = Img2ImgPrompt.input(
+  "checkpoint",
+  "SDXL/realvisxlV40_v40LightningBakedvae.safetensors"
+)
   .input("sourceImg", uploadedImg.info.filename)
-  .input("seed", 231412239112)
+  .input("seed", seed())
   .input("difference", 0.6)
-  .input("step", 20)
+  .input("step", 4)
+  .input("cfg", 1)
+  .input<TSamplerName>("sampler", "dpmpp_2m_sde_gpu")
+  .input<TSchedulerName>("sheduler", "sgm_uniform")
   .input("width", 768)
   .input("height", 768)
-  .input("positive", "A picture of cute Miku")
+  .input("positive", "A picture of cute cat")
   .input("negative", "text, nsfw, blurry, bad draw, embeddings:easynegative");
 
-new CallWrapper<typeof workflow>(api, workflow)
+new CallWrapper(api, workflow)
+  .onPending(() => console.log("Task is pending"))
   .onStart(() => console.log("Task is started"))
   .onPreview((blob) => console.log(blob))
   .onFinished((data) => {
@@ -71,5 +91,5 @@ new CallWrapper<typeof workflow>(api, workflow)
   .onProgress((info) =>
     console.log("Processing node", info.node, `${info.value}/${info.max}`)
   )
-  .onFailed(() => console.log("Task is failed"))
+  .onFailed((err) => console.log("Task is failed", err))
   .run();
