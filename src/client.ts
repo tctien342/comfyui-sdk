@@ -629,7 +629,7 @@ export class ComfyApi extends EventTarget {
         const status = await response.json();
         this.dispatchEvent(new CustomEvent("status", { detail: status }));
       } catch (error) {
-        this.dispatchEvent(new CustomEvent("status", { detail: null }));
+        this.dispatchEvent(new CustomEvent("disconnected", { detail: null }));
       }
     }, 1000);
   }

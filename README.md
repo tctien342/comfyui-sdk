@@ -49,7 +49,13 @@ const ApiPool = new ComfyPool(
   //   "PICK_LOWEST", Picks the client which has the lowest queue remaining.
   //   "PICK_ROUTINE", Picks the client in a round-robin manner.
   EQueueMode.PICK_ZERO
-);
+) 
+  .on("init", () => console.log("Pool in initializing"))
+  .on("loading_client", (ev) =>
+    console.log("Loading client", ev.detail.clientIdx)
+  )
+  .on("add_job", (ev) => console.log("Job added", ev.detail.jobIdx))
+  .on("added", (ev) => console.log("Client added", ev.detail.clientIdx));
 
 // Fn to random Int
 function randomInt(min: number, max: number) {
@@ -58,9 +64,8 @@ function randomInt(min: number, max: number) {
 
 const generateFn = async (api: ComfyApi) => {
   return new Promise<string[]>((resolve) => {
-    const seed = randomInt(1000, 9999999999);
-    const workflow = Txt2ImgPrompt.caller
-      .input("seed", seed)
+    const workflow = Txt2ImgPrompt
+      .input("seed", seed())
       .input("step", 16)
       .input("width", 512)
       .input("height", 512)
@@ -70,7 +75,7 @@ const generateFn = async (api: ComfyApi) => {
       .input("positive", "A close up picture of cute Cat")
       .input("negative", "text, blurry, bad picture, nsfw");
 
-    new CallWrapper<typeof workflow>(api, workflow)
+    new CallWrapper(api, workflow)
       .onStart((promptId) => console.log(`#${promptId}`, "Task is started"))
       .onPreview((blob, promptId) => console.log(`#${promptId}`, blob))
       .onFinished((data, promptId) => {
@@ -147,8 +152,8 @@ const api = new ComfyApi("https://comfyui.instance:8188", "your-client-id");
 
 ### Event Handling
 
-- **on(type, callback, options?)**: Register an event listener. Return off function to remove the listener.
-- **off(type, callback, options?)**: Unregister an event listener.
+- **on(type: TEventKey, callback, options?)**: Register an event listener. Return off function to remove the listener.
+- **off(type: TEventKey, callback, options?)**: Unregister an event listener.
 
 ### General
 
@@ -290,6 +295,8 @@ console.log("Mapped Outputs:", caller.mapOutputKeys);
 
 #### Methods
 
+- **on(type: TComfyPoolEventKey, callback: (ev: CustomEvent) => void)**: Registers an event listener.
+- **off(type: TComfyPoolEventKey, callback: (ev: CustomEvent) => void)**: Unregisters an event listener.
 - **addClient(client: ComfyApi)**: Adds a new `ComfyApi` client to the pool.
 - **removeClient(client: ComfyApi)**: Removes a `ComfyApi` client from the pool.
 - **removeClientByIndex(index: number)**: Removes a `ComfyApi` client from the pool by index.

@@ -1,3 +1,4 @@
+import type { TComfyPoolEventMap } from "../types/event";
 import type { ComfyApi } from "./client";
 import { delay } from "./tools";
 
@@ -23,7 +24,7 @@ export enum EQueueMode {
   "PICK_ROUTINE",
 }
 
-export class ComfyPool {
+export class ComfyPool extends EventTarget {
   public clients: ComfyApi[] = [];
   private clientStates: Array<{
     queueRemaining: number;
@@ -39,6 +40,7 @@ export class ComfyPool {
   private routineIdx: number = 0;
 
   constructor(clients: ComfyApi[], mode: EQueueMode = EQueueMode.PICK_ZERO) {
+    super();
     this.clients = clients;
     this.mode = mode;
     this.clientStates = clients.map(() => ({
@@ -46,16 +48,46 @@ export class ComfyPool {
       locked: false,
       online: false,
     }));
+    this.startUp();
+  }
+
+  private async startUp() {
+    /**
+     * Wait for 50ms before initializing event listeners
+     */
+    await delay(50);
+    this.dispatchEvent(new CustomEvent("init"));
     this.clients.forEach((client, index) =>
       this.initializeClient(client, index)
     );
     this.pickJob();
   }
 
+  public on<K extends keyof TComfyPoolEventMap>(
+    type: K,
+    callback: (event: TComfyPoolEventMap[K]) => void,
+    options?: AddEventListenerOptions | boolean
+  ) {
+    this.addEventListener(type, callback as any, options);
+    return this;
+  }
+
+  public off<K extends keyof TComfyPoolEventMap>(
+    type: K,
+    callback: (event: TComfyPoolEventMap[K]) => void,
+    options?: EventListenerOptions | boolean
+  ) {
+    this.removeEventListener(type, callback as any, options);
+    return this;
+  }
+
   addClient(client: ComfyApi): void {
-    this.clients.push(client);
+    const index = this.clients.push(client);
     this.clientStates.push({ queueRemaining: 0, locked: false, online: false });
     this.initializeClient(client, this.clients.length - 1);
+    this.dispatchEvent(
+      new CustomEvent("added", { detail: { client, clientIdx: index } })
+    );
   }
 
   removeClient(client: ComfyApi): void {
@@ -63,18 +95,25 @@ export class ComfyPool {
     if (index !== -1) {
       this.clients.splice(index, 1);
       this.clientStates.splice(index, 1);
+      this.dispatchEvent(
+        new CustomEvent("removed", { detail: { client, clientIdx: index } })
+      );
     }
   }
 
   removeClientByIndex(index: number): void {
     if (index >= 0 && index < this.clients.length) {
-      this.clients.splice(index, 1);
+      const client = this.clients.splice(index, 1)[0];
       this.clientStates.splice(index, 1);
+      this.dispatchEvent(
+        new CustomEvent("removed", { detail: { client, clientIdx: index } })
+      );
     }
   }
 
   changeMode(mode: EQueueMode): void {
     this.mode = mode;
+    this.dispatchEvent(new CustomEvent("change_mode", { detail: { mode } }));
   }
 
   pick(idx: number = 0): ComfyApi {
@@ -86,11 +125,22 @@ export class ComfyPool {
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       this.claim(async (client, idx) => {
+        this.dispatchEvent(
+          new CustomEvent("executing", { detail: { client, clientIdx: idx } })
+        );
         try {
           resolve(await job(client, idx));
+          this.dispatchEvent(
+            new CustomEvent("executed", { detail: { client, clientIdx: idx } })
+          );
         } catch (e) {
           console.error(e);
           reject(e);
+          this.dispatchEvent(
+            new CustomEvent("execution_error", {
+              detail: { client, clientIdx: idx, error: e },
+            })
+          );
         }
       });
     });
@@ -103,8 +153,18 @@ export class ComfyPool {
   }
 
   private initializeClient(client: ComfyApi, index: number): void {
+    this.dispatchEvent(
+      new CustomEvent("loading_client", {
+        detail: { client, clientIdx: index },
+      })
+    );
     const states = this.clientStates[index];
     client.on("status", (ev) => {
+      if (states.online === false) {
+        this.dispatchEvent(
+          new CustomEvent("connected", { detail: { client, clientIdx: index } })
+        );
+      }
       states.online = true;
       states.queueRemaining = ev.detail.status.exec_info.queue_remaining;
       if (this.mode !== EQueueMode.PICK_ZERO) {
@@ -114,10 +174,20 @@ export class ComfyPool {
     client.on("disconnected", () => {
       states.online = false;
       states.locked = true;
+      this.dispatchEvent(
+        new CustomEvent("disconnected", {
+          detail: { client, clientIdx: index },
+        })
+      );
     });
     client.on("reconnected", () => {
       states.online = true;
       states.locked = false;
+      this.dispatchEvent(
+        new CustomEvent("reconnected", {
+          detail: { client, clientIdx: index },
+        })
+      );
     });
     client.init();
   }
@@ -125,7 +195,8 @@ export class ComfyPool {
   private async claim(
     fn: (client: ComfyApi, clientIdx?: number) => Promise<void>
   ): Promise<void> {
-    this.jobQueue.push(fn);
+    const idx = this.jobQueue.push(fn);
+    this.dispatchEvent(new CustomEvent("add_job", { detail: { jobIdx: idx } }));
   }
 
   private async getAvailableClient(): Promise<ComfyApi> {

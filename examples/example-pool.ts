@@ -50,7 +50,13 @@ const ApiPool = new ComfyPool(
     new ComfyApi("http://localhost:8189"), // Comfy Instance 2
   ],
   EQueueMode.PICK_ZERO
-);
+)
+  .on("init", () => console.log("Pool in initializing"))
+  .on("loading_client", (ev) =>
+    console.log("Loading client", ev.detail.clientIdx)
+  )
+  .on("add_job", (ev) => console.log("Job added", ev.detail.jobIdx))
+  .on("added", (ev) => console.log("Client added", ev.detail.clientIdx));
 
 /**
  * Define the generator function for all nodes
@@ -75,7 +81,7 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
       .input("positive", "A close up picture of cute Cat")
       .input("negative", "text, blurry, bad picture, nsfw");
 
-    new CallWrapper<typeof workflow>(api, workflow)
+    new CallWrapper(api, workflow)
       .onPending((promptId) =>
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is pending")
       )

@@ -1,3 +1,5 @@
+import type { ComfyApi } from "../src/client";
+
 export type TEventStatus = {
   status: {
     exec_info: {
@@ -84,4 +86,37 @@ export type TComfyAPIEventMap = {
   executed: CustomEvent<TExecuted>;
   execution_error: CustomEvent<TExecutionError>;
   execution_cached: CustomEvent<TExecutionCached>;
+};
+
+export type TComfyPoolEventKey =
+  | "init"
+  | "init_client"
+  | "added"
+  | "removed"
+  | "add_job"
+  | "change_mode"
+  | "connected"
+  | "disconnected"
+  | "reconnected"
+  | "executing"
+  | "executed"
+  | "execution_error";
+
+export type TComfyPoolEventMap = {
+  init: CustomEvent<null>;
+  loading_client: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  change_mode: CustomEvent<{ mode: EQueueMode }>;
+  added: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  removed: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  connected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  disconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  reconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  add_job: CustomEvent<{ jobIdx: number }>;
+  executing: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  executed: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
+  execution_error: CustomEvent<{
+    client: ComfyApi;
+    clientIdx: number;
+    error: Error;
+  }>;
 };
