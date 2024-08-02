@@ -57,11 +57,6 @@ const ApiPool = new ComfyPool(
   .on("add_job", (ev) => console.log("Job added", ev.detail.jobIdx))
   .on("added", (ev) => console.log("Client added", ev.detail.clientIdx));
 
-// Fn to random Int
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
 const generateFn = async (api: ComfyApi) => {
   return new Promise<string[]>((resolve) => {
     const workflow = Txt2ImgPrompt
