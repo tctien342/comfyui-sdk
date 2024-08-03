@@ -1,3 +1,7 @@
+**Version 0.1.3**
+
+- Use `execution_success` and `execution_error` to track execution status, prevent onFinished block next execution
+
 **Version 0.1.2**
 
 - Support for `Basic Authroization` when enable auth in NginX
