@@ -1,3 +1,7 @@
+**Version 0.1.2**
+
+- Support for `Basic Authroization` when enable auth in NginX
+
 **Version 0.1.1**
 
 - Bind events into pool, now we can track what pool is doing

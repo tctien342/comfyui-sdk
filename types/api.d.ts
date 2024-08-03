@@ -1,3 +1,9 @@
+export interface BasicCredentials {
+  type: "basic";
+  username: string;
+  password: string;
+}
+
 export interface HistoryResponse {
   [key: string]: HistoryEntry;
 }

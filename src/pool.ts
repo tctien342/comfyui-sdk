@@ -189,6 +189,20 @@ export class ComfyPool extends EventTarget {
         })
       );
     });
+    client.on("auth_error", (ev) => {
+      this.dispatchEvent(
+        new CustomEvent("auth_error", {
+          detail: { client, clientIdx: index, res: ev.detail },
+        })
+      );
+    });
+    client.on("auth_success", (ev) => {
+      this.dispatchEvent(
+        new CustomEvent("auth_success", {
+          detail: { client, clientIdx: index },
+        })
+      );
+    });
     client.init();
   }
 

@@ -59,6 +59,8 @@ export type TMonitorEvent = {
 
 export type TEventKey =
   | "all"
+  | "auth_error"
+  | "auth_success"
   | "status"
   | "progress"
   | "executing"
@@ -74,6 +76,8 @@ export type TEventKey =
 
 export type TComfyAPIEventMap = {
   all: CustomEvent<unknown>;
+  auth_error: CustomEvent<Response>;
+  auth_success: CustomEvent<null>;
   status: CustomEvent<TEventStatus>;
   disconnected: CustomEvent<null>;
   reconnecting: CustomEvent<null>;
@@ -91,6 +95,8 @@ export type TComfyAPIEventMap = {
 export type TComfyPoolEventKey =
   | "init"
   | "init_client"
+  | "auth_error"
+  | "auth_success"
   | "added"
   | "removed"
   | "add_job"
@@ -104,6 +110,12 @@ export type TComfyPoolEventKey =
 
 export type TComfyPoolEventMap = {
   init: CustomEvent<null>;
+  auth_error: CustomEvent<{
+    client: ComfyApi;
+    clientIdx: number;
+    res: Response;
+  }>;
+  auth_success: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   loading_client: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   change_mode: CustomEvent<{ mode: EQueueMode }>;
   added: CustomEvent<{ client: ComfyApi; clientIdx: number }>;

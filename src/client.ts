@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 
 import type {
+  BasicCredentials,
   HistoryEntry,
   HistoryResponse,
   ImageInfo,
@@ -29,6 +30,7 @@ export class ComfyApi extends EventTarget {
   private apiBase: string;
   private clientId: string | null;
   private socket: WebSocket | null = null;
+  private credentials: BasicCredentials | null = null;
 
   static generateId(): string {
     return (
@@ -58,16 +60,55 @@ export class ComfyApi extends EventTarget {
     return this.clientId ?? this.apiBase;
   }
 
-  constructor(host: string, clientId: string = ComfyApi.generateId()) {
+  constructor(
+    host: string,
+    clientId: string = ComfyApi.generateId(),
+    opts?: {
+      credentials?: BasicCredentials;
+    }
+  ) {
     super();
     this.apiHost = host;
     this.apiBase = host.split("://")[1];
     this.clientId = clientId;
+    if (opts?.credentials) {
+      this.credentials = opts?.credentials;
+      this.testCredentials();
+    }
     return this;
   }
 
   private apiURL(route: string): string {
     return `${this.apiHost}${route}`;
+  }
+
+  private getCredentialHeaders(): Record<string, string> {
+    if (!this.credentials) return {};
+    switch (this.credentials?.type) {
+      case "basic":
+        return {
+          Authorization: `Basic ${btoa(
+            `${this.credentials.username}:${this.credentials.password}`
+          )}`,
+        };
+      default:
+        return {};
+    }
+  }
+
+  private async testCredentials() {
+    try {
+      await this.pollStatus(2000);
+      this.dispatchEvent(new CustomEvent("auth_success"));
+      return true;
+    } catch (e) {
+      if (e instanceof Response) {
+        if (e.status === 401) {
+          this.dispatchEvent(new CustomEvent("auth_error", { detail: e }));
+        }
+      }
+      return false;
+    }
   }
 
   private async fetchApi(
@@ -77,9 +118,9 @@ export class ComfyApi extends EventTarget {
     if (!options) {
       options = {};
     }
-    if (!options.headers) {
-      options.headers = {};
-    }
+    options.headers = {
+      ...this.getCredentialHeaders(),
+    };
     options.headers["Comfy-User"] = this.clientId || "";
     return fetch(this.apiURL(route), options);
   }
@@ -95,7 +136,11 @@ export class ComfyApi extends EventTarget {
       const response = await this.fetchApi("/prompt", {
         signal: controller.signal,
       });
-      return response.json();
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw response;
+      }
     } catch (error: any) {
       if (error.name === "AbortError") {
         throw new Error("Request timed out");
@@ -138,7 +183,7 @@ export class ComfyApi extends EventTarget {
 
       if (response.status !== 200) {
         throw {
-          response: await response.json(),
+          response,
         };
       }
 
@@ -380,6 +425,17 @@ export class ComfyApi extends EventTarget {
   }
 
   /**
+   * Get blob of image based on the provided image information. Use when the server have credential.
+   */
+  async getImage(imageInfo: ImageInfo): Promise<Blob> {
+    return this.fetchApi(
+      `/view?filename=${imageInfo.filename}&type=${imageInfo.type}&subfolder=${
+        imageInfo.subfolder ?? ""
+      }`
+    ).then((res) => res.blob());
+  }
+
+  /**
    * Retrieves a user data file for the current user.
    * @param {string} file The name of the userdata file to load.
    * @returns {Promise<Response>} The fetch response object.
@@ -536,12 +592,16 @@ export class ComfyApi extends EventTarget {
       return;
     }
 
+    const headers = {
+      ...this.getCredentialHeaders(),
+    };
     let opened = false;
     let existingSession = "?clientId=" + this.clientId;
     this.socket = new WebSocket(
       `ws${this.apiHost.includes("https:") ? "s" : ""}://${
         this.apiBase
-      }/ws${existingSession}`
+      }/ws${existingSession}`,
+      { headers }
     );
     this.socket.binaryType = "arraybuffer";
 
