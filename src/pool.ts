@@ -28,7 +28,7 @@ export class ComfyPool extends EventTarget {
   public clients: ComfyApi[] = [];
   private clientStates: Array<{
     queueRemaining: number;
-    locked: boolean;
+    locked: string | boolean;
     online: boolean;
   }> = [];
 
@@ -173,7 +173,7 @@ export class ComfyPool extends EventTarget {
     });
     client.on("disconnected", () => {
       states.online = false;
-      states.locked = true;
+      states.locked = false;
       this.dispatchEvent(
         new CustomEvent("disconnected", {
           detail: { client, clientIdx: index },
@@ -188,6 +188,12 @@ export class ComfyPool extends EventTarget {
           detail: { client, clientIdx: index },
         })
       );
+    });
+    client.on("execution_success", (ev) => {
+      states.locked = false;
+    });
+    client.on("execution_error", (ev) => {
+      states.locked = false;
     });
     client.on("auth_error", (ev) => {
       this.dispatchEvent(
@@ -251,9 +257,7 @@ export class ComfyPool extends EventTarget {
     const client = await this.getAvailableClient();
     const clientIdx = this.clients.indexOf(client);
     const job = this.jobQueue.shift();
-    job?.(client, clientIdx).finally(() => {
-      this.clientStates[clientIdx].locked = false;
-    });
+    job?.(client, clientIdx);
     this.pickJob();
   }
 }

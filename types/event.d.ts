@@ -66,6 +66,7 @@ export type TEventKey =
   | "executing"
   | "executed"
   | "disconnected"
+  | "execution_success"
   | "execution_start"
   | "execution_error"
   | "execution_cached"
@@ -78,6 +79,7 @@ export type TComfyAPIEventMap = {
   all: CustomEvent<unknown>;
   auth_error: CustomEvent<Response>;
   auth_success: CustomEvent<null>;
+  execution_success: CustomEvent<TExecution>;
   status: CustomEvent<TEventStatus>;
   disconnected: CustomEvent<null>;
   reconnecting: CustomEvent<null>;
