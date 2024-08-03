@@ -1,6 +1,6 @@
 **Version 0.1.2**
 
-- Support for `Basic Authroization` when enable auth in NginX
+- Support for `Basic Authorization` when enable auth in NginX
 
 **Version 0.1.1**
 
