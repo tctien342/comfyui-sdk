@@ -125,7 +125,7 @@ export type TComfyPoolEventMap = {
   connected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   disconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   reconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
-  add_job: CustomEvent<{ jobIdx: number }>;
+  add_job: CustomEvent<{ jobIdx: number; weight: number }>;
   executing: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   executed: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   execution_error: CustomEvent<{

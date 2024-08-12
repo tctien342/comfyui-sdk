@@ -2,6 +2,11 @@ import type { TComfyPoolEventMap } from "../types/event";
 import type { ComfyApi } from "./client";
 import { delay } from "./tools";
 
+interface JobItem {
+  weight: number;
+  fn: (api: ComfyApi, clientIdx?: number) => Promise<void>;
+}
+
 /**
  * Represents the mode for picking clients from a queue.
  *
@@ -33,9 +38,7 @@ export class ComfyPool extends EventTarget {
   }> = [];
 
   private mode: EQueueMode = EQueueMode.PICK_ZERO;
-  private jobQueue: Array<
-    (api: ComfyApi, clientIdx?: number) => Promise<void>
-  > = [];
+  private jobQueue: Array<JobItem> = [];
 
   private routineIdx: number = 0;
 
@@ -121,10 +124,11 @@ export class ComfyPool extends EventTarget {
   }
 
   run<T>(
-    job: (client: ComfyApi, clientIdx?: number) => Promise<T>
+    job: (client: ComfyApi, clientIdx?: number) => Promise<T>,
+    weight?: number
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      this.claim(async (client, idx) => {
+      const fn = async (client: ComfyApi, idx?: number) => {
         this.dispatchEvent(
           new CustomEvent("executing", { detail: { client, clientIdx: idx } })
         );
@@ -142,14 +146,16 @@ export class ComfyPool extends EventTarget {
             })
           );
         }
-      });
+      };
+      this.claim(fn, weight);
     });
   }
 
   batch<T>(
-    jobs: Array<(client: ComfyApi, clientIdx?: number) => Promise<T>>
+    jobs: Array<(client: ComfyApi, clientIdx?: number) => Promise<T>>,
+    weight?: number
   ): Promise<T[]> {
-    return Promise.all(jobs.map((task) => this.run(task)));
+    return Promise.all(jobs.map((task) => this.run(task, weight)));
   }
 
   private initializeClient(client: ComfyApi, index: number): void {
@@ -212,11 +218,30 @@ export class ComfyPool extends EventTarget {
     client.init();
   }
 
+  private pushJobByWeight(item: JobItem): number {
+    const idx = this.jobQueue.findIndex((job) => job.weight > item.weight);
+    if (idx === -1) {
+      return this.jobQueue.push(item);
+    } else {
+      this.jobQueue.splice(idx, 0, item);
+      return idx;
+    }
+  }
+
   private async claim(
-    fn: (client: ComfyApi, clientIdx?: number) => Promise<void>
+    fn: (client: ComfyApi, clientIdx?: number) => Promise<void>,
+    weight?: number
   ): Promise<void> {
-    const idx = this.jobQueue.push(fn);
-    this.dispatchEvent(new CustomEvent("add_job", { detail: { jobIdx: idx } }));
+    const inputWeight = weight === undefined ? this.jobQueue.length : weight;
+    const idx = this.pushJobByWeight({
+      weight: inputWeight,
+      fn,
+    });
+    this.dispatchEvent(
+      new CustomEvent("add_job", {
+        detail: { jobIdx: idx, weight: inputWeight },
+      })
+    );
   }
 
   private async getAvailableClient(): Promise<ComfyApi> {
@@ -257,7 +282,7 @@ export class ComfyPool extends EventTarget {
     const client = await this.getAvailableClient();
     const clientIdx = this.clients.indexOf(client);
     const job = this.jobQueue.shift();
-    job?.(client, clientIdx);
+    job?.fn?.(client, clientIdx);
     this.pickJob();
   }
 }

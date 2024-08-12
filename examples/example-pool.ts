@@ -55,7 +55,14 @@ const ApiPool = new ComfyPool(
   .on("loading_client", (ev) =>
     console.log("Loading client", ev.detail.clientIdx)
   )
-  .on("add_job", (ev) => console.log("Job added", ev.detail.jobIdx))
+  .on("add_job", (ev) =>
+    console.log(
+      "Job added at index",
+      ev.detail.jobIdx,
+      "weight:",
+      ev.detail.weight
+    )
+  )
   .on("added", (ev) => console.log("Client added", ev.detail.clientIdx));
 
 /**
@@ -122,10 +129,24 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
 /**
  * Multiple shoot using batch
  */
-const output = await ApiPool.batch(
-  Array(10)
+const jobA = await ApiPool.batch(
+  Array(5)
     .fill("")
-    .map(() => generateFn)
-);
+    .map(() => generateFn),
+  10 // weight = 10, more weight = lower priority
+).then((res) => {
+  console.log("Batch A done");
+  return res.flat();
+});
 
-console.log(output.flat());
+const jobB = await ApiPool.batch(
+  Array(5)
+    .fill("")
+    .map(() => generateFn),
+  0 // weight = 0, should be executed first
+).then((res) => {
+  console.log("Batch B done");
+  return res.flat();
+});
+
+console.log(await Promise.all([jobA, jobB]).then((res) => res.flat()));
