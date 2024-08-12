@@ -2,8 +2,6 @@
   "name": "@saintno/comfyui-sdk",
   "version": "0.1.10",
   "description": "SDK for ComfyUI",
-  "module": "index.ts",
-  "type": "module",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
   "repository": {
