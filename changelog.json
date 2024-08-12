@@ -1,0 +1,4 @@
+{
+  "output": "CHANGELOG.md",
+  "template": "keepachangelog"
+}

@@ -18,12 +18,24 @@
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
     "@types/bun": "latest",
-    "dts-bundle-generator": "^9.5.1"
+    "dts-bundle-generator": "^9.5.1",
+    "auto-changelog": "^2.3.0",
+    "commitizen": "^4.2.4",
+    "cz-conventional-changelog": "^3.3.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "scripts": {
+    "version": "auto-changelog -p",
+    "commit": "git-cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }
