@@ -10,14 +10,14 @@ import {
   QueueResponse,
   QueueStatus,
   SystemStatsResponse,
-} from "../types/api";
+} from "./types/api";
 
 import {
   LOAD_CHECKPOINTS_EXTENSION,
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
-import { TComfyAPIEventMap } from "../types/event";
+import { TComfyAPIEventMap } from "./types/event";
 
 interface FetchOptions extends RequestInit {
   headers?: {

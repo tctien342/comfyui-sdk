@@ -1,4 +1,4 @@
-import { NodeProgress } from "../types/api";
+import { NodeProgress } from "./types/api";
 import { ComfyApi } from "./client";
 import { PromptBuilder } from "./prompt-builder";
 

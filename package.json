@@ -1,6 +1,6 @@
 {
   "name": "@saintno/comfyui-sdk",
-  "version": "0.1.10",
+  "version": "0.1.11-rc0",
   "description": "SDK for ComfyUI",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -15,7 +15,6 @@
   },
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
-    "@types/bun": "latest",
     "dts-bundle-generator": "^9.5.1",
     "auto-changelog": "^2.3.0",
     "commitizen": "^4.2.4",
@@ -25,6 +24,8 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@types/node": "^22.2.0",
+    "bun-types": "^1.1.22",
     "ws": "^8.18.0"
   },
   "scripts": {
@@ -32,6 +33,9 @@
     "commit": "git-cz",
     "build": "bun build.ts"
   },
+  "files": [
+    "build"
+  ],
   "config": {
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"

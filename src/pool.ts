@@ -1,4 +1,4 @@
-import { TComfyPoolEventMap } from "../types/event";
+import { TComfyPoolEventMap } from "./types/event";
 import { ComfyApi } from "./client";
 import { delay } from "./tools";
 

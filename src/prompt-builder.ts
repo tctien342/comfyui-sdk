@@ -1,4 +1,4 @@
-import { DeepKeys, Simplify } from "../types/tool";
+import { DeepKeys, Simplify } from "./types/tool";
 
 export class PromptBuilder<I extends string, O extends string, T = unknown> {
   prompt: T;

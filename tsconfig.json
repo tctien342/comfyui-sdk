@@ -19,11 +19,8 @@
     "noUnusedParameters": false,
     "esModuleInterop": true,
     "baseUrl": ".",
-    "typeRoots": ["./node_modules/@types", "./src/types"],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src/**/*", "src/types"],
+  "include": ["src/**/*", "index.ts"],
   "exclude": ["node_modules", "build"]
 }

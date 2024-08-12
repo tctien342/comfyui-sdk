@@ -1,4 +1,5 @@
-import { ComfyApi } from "../src/client";
+import { EQueueMode } from "../pool";
+import { ComfyApi } from "../client";
 
 export type TEventStatus = {
   status: {
@@ -34,7 +35,7 @@ export type TExecutionCached = TExecution & {
 export type TExecutionError = TExecution & {
   node_id: string;
   node_type: string;
-  exception_message: srting;
+  exception_message: string;
   exception_type: string;
   traceback: string[];
 };

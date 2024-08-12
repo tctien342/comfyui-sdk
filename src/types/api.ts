@@ -60,18 +60,6 @@ export interface QueueItem {
   [index: number]: number | string | NodeData | MetadataData;
 }
 
-export interface NodeData {
-  [key: string]: {
-    inputs: { [key: string]: any };
-    class_type: string;
-    _meta: { title: string };
-  };
-}
-
-export interface MetadataData {
-  [key: string]: any;
-}
-
 export interface QueuePromptResponse {
   prompt_id: string;
   number: number;
