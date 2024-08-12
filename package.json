@@ -31,7 +31,8 @@
   },
   "scripts": {
     "version": "auto-changelog -p",
-    "commit": "git-cz"
+    "commit": "git-cz",
+    "build": "bun build.ts"
   },
   "config": {
     "commitizen": {

@@ -18,11 +18,14 @@ jobs:
         with:
           node-version: '16'
 
+      - name: Set up Bun.js
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
-        run: npm install
+        run: bun install
 
       - name: Build project
-        run: npm run build
+        run: bun run build
 
       - name: Bump version
         run: npm version patch
