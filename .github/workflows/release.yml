@@ -16,7 +16,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: "16"
+          node-version: "18"
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Set up Bun.js
         uses: oven-sh/setup-bun@v2
@@ -41,8 +42,7 @@ jobs:
           git commit -m 'ci: bump version and update changelog'
           git push
 
-      - name: Authenticate with private NPM package
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
       - name: Publish to NPM
         run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
