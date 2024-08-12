@@ -26,7 +26,7 @@ interface FetchOptions extends RequestInit {
 }
 
 export class ComfyApi extends EventTarget {
-  private apiHost: string;
+  public apiHost: string;
   private apiBase: string;
   private clientId: string | null;
   private socket: WebSocket | null = null;
@@ -257,6 +257,7 @@ export class ComfyApi extends EventTarget {
    */
   async getCheckpoints(): Promise<string[]> {
     const nodeInfo = await this.getNodeDefs(LOAD_CHECKPOINTS_EXTENSION);
+    if (!nodeInfo) return [];
     return (
       nodeInfo[LOAD_CHECKPOINTS_EXTENSION].input.required?.ckpt_name?.[0] ?? []
     );
@@ -268,6 +269,7 @@ export class ComfyApi extends EventTarget {
    */
   async getLoras(): Promise<string[]> {
     const nodeInfo = await this.getNodeDefs(LOAD_LORAS_EXTENSION);
+    if (!nodeInfo) return [];
     return nodeInfo[LOAD_LORAS_EXTENSION].input.required?.lora_name?.[0] ?? [];
   }
 
@@ -277,6 +279,7 @@ export class ComfyApi extends EventTarget {
    */
   async getSamplerInfo() {
     const nodeInfo = await this.getNodeDefs(LOAD_KSAMPLER_EXTENSION);
+    if (!nodeInfo) return {};
     return {
       sampler:
         nodeInfo[LOAD_KSAMPLER_EXTENSION].input.required.sampler_name ?? [],
@@ -289,9 +292,13 @@ export class ComfyApi extends EventTarget {
    * Retrieves node object definitions for the graph.
    * @returns {Promise<NodeDefsResponse>} The node definitions.
    */
-  async getNodeDefs(nodeName?: string): Promise<NodeDefsResponse> {
+  async getNodeDefs(nodeName?: string): Promise<NodeDefsResponse | null> {
     const response = await this.fetchApi(`/object_info/${nodeName ?? ""}`);
-    return response.json();
+    const result = await response.json();
+    if (Object.keys(result).length === 0) {
+      return null;
+    }
+    return result;
   }
 
   /**

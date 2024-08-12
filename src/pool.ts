@@ -1,6 +1,7 @@
 import { TComfyPoolEventMap } from "./types/event";
 import { ComfyApi } from "./client";
 import { delay } from "./tools";
+import { SYSTEM_INFO_EXTENSION } from "./contansts";
 
 interface JobItem {
   weight: number;
@@ -215,7 +216,49 @@ export class ComfyPool extends EventTarget {
         })
       );
     });
+    this.bindClientSystemMonitor(client, index);
     client.init();
+  }
+
+  private async bindClientSystemMonitor(client: ComfyApi, index: number) {
+    const extensionInfo = await client.getNodeDefs(SYSTEM_INFO_EXTENSION);
+    if (extensionInfo) {
+      // Have Crystools extension for update real-time system monitor
+      this.bindWsSystemMonitor(client, index);
+    } else {
+      // No Crystools extension for update real-time system monitor
+      // Use polling instead
+      this.pollingSystemMonitor(client, index);
+    }
+  }
+
+  private bindWsSystemMonitor(client: ComfyApi, index: number) {
+    client.on("crystools.monitor", (ev) => {
+      this.dispatchEvent(
+        new CustomEvent("system_monitor", {
+          detail: {
+            type: "websocket",
+            data: ev.detail,
+            clientIdx: index,
+          },
+        })
+      );
+    });
+  }
+
+  private async pollingSystemMonitor(client: ComfyApi, index: number) {
+    const data = await client.getSystemStats();
+    this.dispatchEvent(
+      new CustomEvent("system_monitor", {
+        detail: {
+          type: "polling",
+          data,
+          clientIdx: index,
+        },
+      })
+    );
+    await delay(1000);
+    this.pollingSystemMonitor(client, index);
   }
 
   private pushJobByWeight(item: JobItem): number {

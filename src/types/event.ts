@@ -1,5 +1,6 @@
 import { EQueueMode } from "../pool";
 import { ComfyApi } from "../client";
+import { SystemStatsResponse } from "./api";
 
 export type TEventStatus = {
   status: {
@@ -109,7 +110,8 @@ export type TComfyPoolEventKey =
   | "reconnected"
   | "executing"
   | "executed"
-  | "execution_error";
+  | "execution_error"
+  | "system_monitor";
 
 export type TComfyPoolEventMap = {
   init: CustomEvent<null>;
@@ -134,4 +136,16 @@ export type TComfyPoolEventMap = {
     clientIdx: number;
     error: Error;
   }>;
+  system_monitor: CustomEvent<
+    | {
+        clientIdx: number;
+        type: "websocket";
+        data: TMonitorEvent;
+      }
+    | {
+        clientIdx: number;
+        type: "polling";
+        data: SystemStatsResponse;
+      }
+  >;
 };
