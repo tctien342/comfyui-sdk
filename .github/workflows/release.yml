@@ -28,7 +28,7 @@ jobs:
         run: bun run build
 
       - name: Bump version
-        run: npm version patch
+        run: npm version patch --no-git-tag-version
 
       - name: Update changelog
         run: npm run version
