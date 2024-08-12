@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 
-import type {
+import {
   BasicCredentials,
   HistoryEntry,
   HistoryResponse,
@@ -17,7 +17,7 @@ import {
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
-import type { TComfyAPIEventMap } from "../types/event";
+import { TComfyAPIEventMap } from "../types/event";
 
 interface FetchOptions extends RequestInit {
   headers?: {

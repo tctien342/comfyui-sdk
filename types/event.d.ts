@@ -1,4 +1,4 @@
-import type { ComfyApi } from "../src/client";
+import { ComfyApi } from "../src/client";
 
 export type TEventStatus = {
   status: {

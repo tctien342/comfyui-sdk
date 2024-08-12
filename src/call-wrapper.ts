@@ -1,6 +1,6 @@
-import type { NodeProgress } from "../types/api";
-import type { ComfyApi } from "./client";
-import type { PromptBuilder } from "./prompt-builder";
+import { NodeProgress } from "../types/api";
+import { ComfyApi } from "./client";
+import { PromptBuilder } from "./prompt-builder";
 
 /**
  * Represents a wrapper class for making API calls using the ComfyApi client.

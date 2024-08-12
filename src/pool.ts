@@ -1,5 +1,5 @@
-import type { TComfyPoolEventMap } from "../types/event";
-import type { ComfyApi } from "./client";
+import { TComfyPoolEventMap } from "../types/event";
+import { ComfyApi } from "./client";
 import { delay } from "./tools";
 
 interface JobItem {

@@ -3,9 +3,9 @@ import { CallWrapper } from "../src/call-wrapper";
 import { ComfyPool, EQueueMode } from "../src/pool";
 import { PromptBuilder } from "../src/prompt-builder";
 import ExampleTxt2ImgWorkflow from "./example-txt2img-workflow.json";
-import type { TSamplerName, TSchedulerName } from "../types/sampler";
+import { TSamplerName, TSchedulerName } from "../types/sampler";
 import { seed } from "../src/tools";
-import type { BasicCredentials } from "../types/api";
+import { BasicCredentials } from "../types/api";
 
 const credentials: BasicCredentials = {
   type: "basic",
