@@ -13,12 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-          registry-url: "https://registry.npmjs.org"
-
       - name: Set up Bun.js
         uses: oven-sh/setup-bun@v2
         with:
@@ -29,6 +23,14 @@ jobs:
 
       - name: Build project
         run: bun run build
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          always-auth: true
+          registry-url: "https://registry.npmjs.org"
+          scope: '@saintno'
 
       - name: Bump version
         run: npm version patch --no-git-tag-version
@@ -45,7 +47,6 @@ jobs:
           git push
 
       - name: Publish to NPM
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          BUN_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

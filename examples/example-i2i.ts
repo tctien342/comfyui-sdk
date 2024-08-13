@@ -2,7 +2,7 @@ import { ComfyApi } from "../src/client";
 import { CallWrapper } from "../src/call-wrapper";
 import { PromptBuilder } from "../src/prompt-builder";
 import ExampleImg2ImgWorkflow from "./example-img2img-workflow.json";
-import { TSamplerName, TSchedulerName } from "../types/sampler";
+import { TSamplerName, TSchedulerName } from "../src/types/sampler";
 import { seed } from "../src/tools";
 
 /**
