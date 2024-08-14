@@ -105,6 +105,7 @@ export type TComfyPoolEventKey =
   | "removed"
   | "add_job"
   | "have_job"
+  | "idle"
   | "change_mode"
   | "connected"
   | "disconnected"
@@ -131,6 +132,7 @@ export type TComfyPoolEventMap = {
   reconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   add_job: CustomEvent<{ jobIdx: number; weight: number }>;
   have_job: CustomEvent<{ client: ComfyApi; remain: number }>;
+  idle: CustomEvent<{ client: ComfyApi }>;
   executing: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   executed: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   execution_error: CustomEvent<{

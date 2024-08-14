@@ -173,16 +173,23 @@ export class ComfyPool extends EventTarget {
         );
       }
       states.online = true;
+      if (
+        ev.detail.status.exec_info.queue_remaining !== states.queueRemaining
+      ) {
+        if (ev.detail.status.exec_info.queue_remaining > 0) {
+          this.dispatchEvent(
+            new CustomEvent("have_job", {
+              detail: { client, remain: states.queueRemaining },
+            })
+          );
+        }
+        if (ev.detail.status.exec_info.queue_remaining === 0) {
+          this.dispatchEvent(new CustomEvent("idle", { detail: { client } }));
+        }
+      }
       states.queueRemaining = ev.detail.status.exec_info.queue_remaining;
       if (this.mode !== EQueueMode.PICK_ZERO) {
         states.locked = false;
-      }
-      if (states.queueRemaining > 0) {
-        this.dispatchEvent(
-          new CustomEvent("have_job", {
-            detail: { client, remain: states.queueRemaining },
-          })
-        );
       }
     });
     client.on("disconnected", () => {
