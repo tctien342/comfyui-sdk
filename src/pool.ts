@@ -177,6 +177,13 @@ export class ComfyPool extends EventTarget {
       if (this.mode !== EQueueMode.PICK_ZERO) {
         states.locked = false;
       }
+      if (states.queueRemaining > 0) {
+        this.dispatchEvent(
+          new CustomEvent("have_job", {
+            detail: { client, remain: states.queueRemaining },
+          })
+        );
+      }
     });
     client.on("disconnected", () => {
       states.online = false;
@@ -237,6 +244,7 @@ export class ComfyPool extends EventTarget {
       this.dispatchEvent(
         new CustomEvent("system_monitor", {
           detail: {
+            client,
             type: "websocket",
             data: ev.detail,
             clientIdx: index,
@@ -251,6 +259,7 @@ export class ComfyPool extends EventTarget {
     this.dispatchEvent(
       new CustomEvent("system_monitor", {
         detail: {
+          client,
           type: "polling",
           data,
           clientIdx: index,

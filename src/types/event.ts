@@ -104,6 +104,7 @@ export type TComfyPoolEventKey =
   | "added"
   | "removed"
   | "add_job"
+  | "have_job"
   | "change_mode"
   | "connected"
   | "disconnected"
@@ -129,6 +130,7 @@ export type TComfyPoolEventMap = {
   disconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   reconnected: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   add_job: CustomEvent<{ jobIdx: number; weight: number }>;
+  have_job: CustomEvent<{ client: ComfyApi; remain: number }>;
   executing: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   executed: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   execution_error: CustomEvent<{
@@ -137,15 +139,15 @@ export type TComfyPoolEventMap = {
     error: Error;
   }>;
   system_monitor: CustomEvent<
-    | {
-        clientIdx: number;
-        type: "websocket";
-        data: TMonitorEvent;
-      }
-    | {
-        clientIdx: number;
-        type: "polling";
-        data: SystemStatsResponse;
-      }
+    { client: ComfyApi; clientIdx: number } & (
+      | {
+          type: "websocket";
+          data: TMonitorEvent;
+        }
+      | {
+          type: "polling";
+          data: SystemStatsResponse;
+        }
+    )
   >;
 };
