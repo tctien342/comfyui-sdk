@@ -136,7 +136,7 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
 /**
  * Multiple shoot using batch
  */
-const jobA = await ApiPool.batch(
+const jobA = ApiPool.batch(
   Array(5)
     .fill("")
     .map(() => generateFn),
@@ -146,7 +146,7 @@ const jobA = await ApiPool.batch(
   return res.flat();
 });
 
-const jobB = await ApiPool.batch(
+const jobB = ApiPool.batch(
   Array(5)
     .fill("")
     .map(() => generateFn),

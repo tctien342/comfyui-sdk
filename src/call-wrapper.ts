@@ -1,6 +1,8 @@
 import { NodeProgress } from "./types/api";
 import { ComfyApi } from "./client";
 import { PromptBuilder } from "./prompt-builder";
+import { delay } from "./tools";
+import { TExecutionCached } from "./types/event";
 
 /**
  * Represents a wrapper class for making API calls using the ComfyApi client.
@@ -122,11 +124,67 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   async run(): Promise<
     Record<keyof T["mapOutputKeys"], any> | undefined | false
   > {
-    const job = await this.enqueueJob();
-    if (!job) return;
+    let loadedPromptId: string | null = null;
+    let cached: boolean | null = null;
 
-    const isCached = await this.checkIfCached(job.prompt_id);
-    if (isCached) {
+    /**
+     * Declare the function to check if the job is executing.
+     */
+    const checkExecutingFn = (event: CustomEvent) => {
+      if (event.detail && cached === null && loadedPromptId === null) {
+        cached = false;
+        loadedPromptId = event.detail.prompt_id;
+      }
+    };
+    /**
+     * Declare the function to check if the job is cached.
+     */
+    const checkExecutionCachedFn = (event: CustomEvent<TExecutionCached>) => {
+      const outputNodes = Object.values(this.prompt.mapOutputKeys).filter(
+        (n) => !!n
+      ) as string[];
+      if (event.detail.nodes.length > 0 && loadedPromptId === null) {
+        /**
+         * Cached is true if all output nodes are included in the cached nodes.
+         */
+        cached = outputNodes.every((node) => event.detail.nodes.includes(node));
+        loadedPromptId = event.detail.prompt_id;
+      }
+    };
+    /**
+     * Listen to the executing event.
+     */
+    this.checkExecutingOffFn = this.client.on("executing", checkExecutingFn);
+    this.checkExecutedOffFn = this.client.on(
+      "execution_cached",
+      checkExecutionCachedFn
+    );
+
+    /**
+     * Start the job execution.
+     */
+    const job = await this.enqueueJob();
+    if (!job) {
+      return false;
+    }
+
+    /**
+     * Wait for the job to be loaded.
+     */
+    while (loadedPromptId !== job.prompt_id) {
+      cached = null;
+      loadedPromptId = null;
+      await delay(100);
+    }
+
+    /**
+     * Wait for checking the job cached.
+     */
+    while (cached === null) {
+      await delay(100);
+    }
+
+    if (cached && loadedPromptId === job.prompt_id) {
       const output = await this.handleCachedOutput(job.prompt_id);
       if (output) return output;
     }
@@ -157,32 +215,6 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
       this.onFailedFn?.(new Error("Disconnected"), this.promptId)
     );
     return job;
-  }
-
-  private async checkIfCached(promptId: string): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      let checked = false;
-
-      const checkExecutingFn = (event: CustomEvent) => {
-        if (event.detail && event.detail.prompt_id === promptId && !checked) {
-          resolve(false);
-        }
-        this.client.off("executing", checkExecutingFn);
-      };
-
-      const checkExecutedFn = (event: CustomEvent) => {
-        if (event.detail.prompt_id === promptId && !checked) {
-          resolve(true);
-        }
-        this.client.off("executed", checkExecutedFn);
-      };
-
-      this.checkExecutingOffFn = this.client.on("executing", checkExecutingFn);
-      this.checkExecutedOffFn = this.client.on(
-        "execution_cached",
-        checkExecutedFn
-      );
-    });
   }
 
   private async handleCachedOutput(

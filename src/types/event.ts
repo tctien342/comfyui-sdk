@@ -30,7 +30,7 @@ export type TExecuted<T = unknown> = TExecution & {
 };
 
 export type TExecutionCached = TExecution & {
-  node: string[];
+  nodes: string[];
 };
 
 export type TExecutionError = TExecution & {
