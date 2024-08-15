@@ -135,9 +135,19 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   }
 
   private async enqueueJob() {
-    const job = await this.client.queuePrompt(-1, this.prompt.workflow);
+    const job = await this.client
+      .queuePrompt(-1, this.prompt.workflow)
+      .catch(async (e) => {
+        if (e instanceof Response) {
+          this.onFailedFn?.(
+            new Error("Failed to queue prompt", { cause: await e.json() })
+          );
+        } else {
+          this.onFailedFn?.(new Error("Failed to queue prompt", { cause: e }));
+        }
+        return null;
+      });
     if (!job) {
-      this.onFailedFn?.(new Error("Job could not be queued"));
       return;
     }
 

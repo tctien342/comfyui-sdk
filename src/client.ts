@@ -160,7 +160,7 @@ export class ComfyApi extends EventTarget {
   async queuePrompt(
     number: number,
     workflow: object
-  ): Promise<QueuePromptResponse | false> {
+  ): Promise<QueuePromptResponse> {
     const body = {
       client_id: this.clientId,
       prompt: workflow,
@@ -189,8 +189,8 @@ export class ComfyApi extends EventTarget {
 
       return response.json();
     } catch (e) {
-      console.warn("Can't queue prompt", workflow, e);
-      return false;
+      console.warn("Can't queue prompt", e);
+      throw e.response as Response;
     }
   }
 
