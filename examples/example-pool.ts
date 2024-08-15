@@ -75,7 +75,11 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
      */
     const workflow = Txt2ImgPrompt.input(
       "checkpoint",
-      "SDXL/realvisxlV40_v40LightningBakedvae.safetensors"
+      "SDXL/realvisxlV40_v40LightningBakedvae.safetensors",
+      /**
+       * Use the client's osType to encode the path
+       */
+      api.osType
     )
       .input("seed", seed())
       .input("step", 6)
@@ -90,7 +94,10 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
 
     new CallWrapper(api, workflow)
       .onPending((promptId) =>
-        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is pending")
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is pending", {
+          clientId: api.id,
+          clientOs: api.osType,
+        })
       )
       .onStart((promptId) =>
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is started")

@@ -6,6 +6,7 @@ import {
   HistoryResponse,
   ImageInfo,
   NodeDefsResponse,
+  OSType,
   QueuePromptResponse,
   QueueResponse,
   QueueStatus,
@@ -27,6 +28,7 @@ interface FetchOptions extends RequestInit {
 
 export class ComfyApi extends EventTarget {
   public apiHost: string;
+  public osType: OSType;
   private apiBase: string;
   private clientId: string | null;
   private socket: WebSocket | null = null;
@@ -98,6 +100,7 @@ export class ComfyApi extends EventTarget {
 
   private async testCredentials() {
     try {
+      if (!this.credentials) return false;
       await this.pollStatus(2000);
       this.dispatchEvent(new CustomEvent("auth_success"));
       return true;
@@ -408,12 +411,106 @@ export class ComfyApi extends EventTarget {
       });
       const imgInfo = await response.json();
       const mapped = { ...imgInfo, filename: imgInfo.name };
+
+      // Check if the response is successful
+      if (!response.ok) {
+        console.warn(`Upload failed with status: ${response.status}`);
+        return false;
+      }
+
       return {
         info: mapped,
         url: this.getPathImage(mapped),
       };
     } catch (e) {
       console.warn(e);
+      return false;
+    }
+  }
+
+  /**
+   * Uploads a mask file to the server.
+   *
+   * @param file - The mask file to upload, can be a Buffer or Blob.
+   * @param originalRef - The original reference information for the file.
+   * @returns A Promise that resolves to an object containing the image info and URL if the upload is successful, or false if the upload fails.
+   */
+  async uploadMask(
+    file: Buffer | Blob,
+    originalRef: ImageInfo
+  ): Promise<{ info: ImageInfo; url: string } | false> {
+    const formData = new FormData();
+
+    // Append the image file to the form data
+    if (file instanceof Buffer) {
+      formData.append("image", new Blob([file]), "mask.png");
+    } else {
+      formData.append("image", file, "mask.png");
+    }
+
+    // Append the original reference as a JSON string
+    formData.append("original_ref", JSON.stringify(originalRef));
+
+    try {
+      // Send the POST request to the /upload/mask endpoint
+      const response = await this.fetchApi("/upload/mask", {
+        method: "POST",
+        body: formData,
+      });
+
+      // Check if the response is successful
+      if (!response.ok) {
+        console.warn(`Upload failed with status: ${response.status}`);
+        return false;
+      }
+
+      const imgInfo = await response.json();
+      const mapped = { ...imgInfo, filename: imgInfo.name };
+      return {
+        info: mapped,
+        url: this.getPathImage(mapped),
+      };
+    } catch (error) {
+      console.warn("Upload failed:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Frees memory by unloading models and freeing memory.
+   *
+   * @param unloadModels - A boolean indicating whether to unload models.
+   * @param freeMemory - A boolean indicating whether to free memory.
+   * @returns A promise that resolves to a boolean indicating whether the memory was successfully freed.
+   */
+  async freeMemory(
+    unloadModels: boolean,
+    freeMemory: boolean
+  ): Promise<boolean> {
+    const payload = {
+      unload_models: unloadModels,
+      free_memory: freeMemory,
+    };
+
+    try {
+      const response = await this.fetchApi("/free", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Check if the response is successful
+      if (!response.ok) {
+        console.warn(`Can't free memory with status: ${response.status}`);
+        return false;
+      }
+
+      // Return the response object
+      return true;
+    } catch (error) {
+      console.warn("Request failed:", error);
       return false;
     }
   }
@@ -577,7 +674,17 @@ export class ComfyApi extends EventTarget {
    */
   init() {
     this.createSocket();
+    /**
+     * Get system OS type on initialization.
+     */
+    this.pullOsType();
     return this;
+  }
+
+  private async pullOsType() {
+    this.getSystemStats().then((data) => {
+      this.osType = data.system.os;
+    });
   }
 
   /**

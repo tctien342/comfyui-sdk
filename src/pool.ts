@@ -57,9 +57,9 @@ export class ComfyPool extends EventTarget {
 
   private async startUp() {
     /**
-     * Wait for 50ms before initializing event listeners
+     * Wait before initializing event listeners
      */
-    await delay(50);
+    await delay(1);
     this.dispatchEvent(new CustomEvent("init"));
     this.clients.forEach((client, index) =>
       this.initializeClient(client, index)
@@ -85,6 +85,12 @@ export class ComfyPool extends EventTarget {
     return this;
   }
 
+  /**
+   * Adds a client to the pool.
+   *
+   * @param client - The client to be added.
+   * @returns void
+   */
   addClient(client: ComfyApi): void {
     const index = this.clients.push(client);
     this.clientStates.push({ queueRemaining: 0, locked: false, online: false });
@@ -94,6 +100,12 @@ export class ComfyPool extends EventTarget {
     );
   }
 
+  /**
+   * Removes a client from the pool.
+   *
+   * @param client - The client to be removed.
+   * @returns void
+   */
   removeClient(client: ComfyApi): void {
     const index = this.clients.indexOf(client);
     if (index !== -1) {
@@ -105,6 +117,13 @@ export class ComfyPool extends EventTarget {
     }
   }
 
+  /**
+   * Removes a client from the pool by its index.
+   *
+   * @param index - The index of the client to remove.
+   * @returns void
+   * @fires removed - Fires a "removed" event with the removed client and its index as detail.
+   */
   removeClientByIndex(index: number): void {
     if (index >= 0 && index < this.clients.length) {
       const client = this.clients.splice(index, 1)[0];
@@ -115,15 +134,35 @@ export class ComfyPool extends EventTarget {
     }
   }
 
+  /**
+   * Changes the mode of the queue.
+   *
+   * @param mode - The new mode to set for the queue.
+   * @returns void
+   */
   changeMode(mode: EQueueMode): void {
     this.mode = mode;
     this.dispatchEvent(new CustomEvent("change_mode", { detail: { mode } }));
   }
 
+  /**
+   * Picks a ComfyApi client from the pool based on the given index.
+   *
+   * @param idx - The index of the client to pick. Defaults to 0 if not provided.
+   * @returns The picked ComfyApi client.
+   */
   pick(idx: number = 0): ComfyApi {
     return this.clients[idx];
   }
 
+  /**
+   * Executes a job using the provided client and optional client index.
+   *
+   * @template T The type of the result returned by the job.
+   * @param {Function} job The job to be executed.
+   * @param {number} [weight] The weight of the job.
+   * @returns {Promise<T>} A promise that resolves with the result of the job.
+   */
   run<T>(
     job: (client: ComfyApi, clientIdx?: number) => Promise<T>,
     weight?: number
@@ -152,6 +191,14 @@ export class ComfyPool extends EventTarget {
     });
   }
 
+  /**
+   * Executes a batch of asynchronous jobs concurrently and returns an array of results.
+   *
+   * @template T - The type of the result returned by each job.
+   * @param jobs - An array of functions that represent the asynchronous jobs to be executed.
+   * @param weight - An optional weight value to assign to each job.
+   * @returns A promise that resolves to an array of results, in the same order as the jobs array.
+   */
   batch<T>(
     jobs: Array<(client: ComfyApi, clientIdx?: number) => Promise<T>>,
     weight?: number

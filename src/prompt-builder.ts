@@ -1,3 +1,5 @@
+import { encodeNTPath, encodePosixPath } from "./tools";
+import { OSType } from "./types/api";
 import { DeepKeys, Simplify } from "./types/tool";
 
 export class PromptBuilder<I extends string, O extends string, T = unknown> {
@@ -62,12 +64,26 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
    * @template V - The type of the value being set.
    * @param {I} key - The input key.
    * @param {V} value - The value to set.
+   * @param {OSType} [encodeOs] - The OS type to encode the path.
    * @returns A new prompt builder with the updated value.
    * @throws {Error} - If the key is not found.
    */
-  input<V = string | number | undefined>(key: I, value: V) {
+  input<V = string | number | undefined>(key: I, value: V, encodeOs?: OSType) {
     const newBuilder = this.clone();
     if (value !== undefined) {
+      let valueToSet = value;
+      /**
+       * Handle encode path if needed, use for load models path
+       */
+      if (encodeOs === OSType.NT && typeof valueToSet === "string") {
+        valueToSet = encodeNTPath(valueToSet) as typeof valueToSet;
+      } else if (encodeOs === OSType.POSIX && typeof valueToSet === "string") {
+        valueToSet = encodePosixPath(valueToSet) as typeof valueToSet;
+      }
+
+      /**
+       * Map the input key to the path in the prompt object
+       */
       const path = newBuilder.mapInputKeys[key] as string;
       if (!path) {
         throw new Error(`Key ${key} not found`);
@@ -80,7 +96,7 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
         }
         current = current[keys[i]];
       }
-      current[keys[keys.length - 1]] = value;
+      current[keys[keys.length - 1]] = valueToSet;
     }
     return newBuilder as Simplify<PromptBuilder<I, O, object>>;
   }

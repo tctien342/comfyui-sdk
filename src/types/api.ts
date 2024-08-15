@@ -1,3 +1,18 @@
+export enum OSType {
+  /**
+   * Unix-like operating systems
+   */
+  POSIX = "posix",
+  /**
+   * Windows operating systems
+   */
+  NT = "nt",
+  /**
+   * Java virtual machine
+   */
+  JAVA = "java",
+}
+
 export interface BasicCredentials {
   type: "basic";
   username: string;
@@ -68,7 +83,7 @@ export interface QueuePromptResponse {
 
 export interface SystemStatsResponse {
   system: {
-    os: string;
+    os: OSType;
     python_version: string;
     embedded_python: boolean;
   };

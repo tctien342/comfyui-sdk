@@ -67,7 +67,11 @@ if (!uploadedImg) {
  */
 const workflow = Img2ImgPrompt.input(
   "checkpoint",
-  "SDXL/realvisxlV40_v40LightningBakedvae.safetensors"
+  "SDXL/realvisxlV40_v40LightningBakedvae.safetensors",
+  /**
+   * Use the client's osType to encode the path
+   */
+  api.osType
 )
   .input("sourceImg", uploadedImg.info.filename)
   .input("seed", seed())

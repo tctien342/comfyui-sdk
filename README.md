@@ -65,9 +65,10 @@ import workflowJson from "./workflow.json"; // Get from `Save (API Format)` or `
 
 const promptBuilder = new PromptBuilder(
   workflowJson,
-  ["positive", "negative", "seed", "steps"],  // Input keys
-  ["images"]  // Output keys
+  ["checkpoint", "positive", "negative", "seed", "steps"], // Input keys
+  ["images"] // Output keys
 )
+  .setInputNode("checkpoint", "4.inputs.ckpt_name")
   .setInputNode("positive", "6.inputs.text")
   .setInputNode("negative", "7.inputs.text")
   .setInputNode("seed", "3.inputs.seed")
@@ -81,6 +82,17 @@ const promptBuilder = new PromptBuilder(
 import { CallWrapper } from "@saintno/comfyui-sdk";
 
 const workflow = promptBuilder
+  .input(
+    "checkpoint",
+    "SDXL/realvisxlV40_v40LightningBakedvae.safetensors",
+    /**
+     * Use the client's osType to encode the path
+     *
+     * For example, if the client's `osType` is "nt" (Windows), the path should be encoded as below
+     * "SDXL\\realvisxlV40_v40LightningBakedvae.safetensors"
+     */
+    api.osType // This is optional, but recommended it you want to support multiple platforms
+  )
   .input("positive", "A beautiful landscape")
   .input("negative", "blurry, text")
   .input("seed", 42)
@@ -95,6 +107,13 @@ new CallWrapper(api, workflow)
     console.log(`Task ${promptId} finished:`, data)
   )
   .run();
+```
+
+You can use `api.getCheckpoints()` to get the list of available checkpoints.
+
+```typescript
+const client = new ComfyApi("http://localhost:8188");
+await client.getCheckpoints().then(console.log);
 ```
 
 ## Advanced Usage
