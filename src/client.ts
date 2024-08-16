@@ -19,6 +19,7 @@ import {
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
 import { TComfyAPIEventMap } from "./types/event";
+import { randomUUID } from "crypto";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -35,10 +36,7 @@ export class ComfyApi extends EventTarget {
   private credentials: BasicCredentials | null = null;
 
   static generateId(): string {
-    return (
-      Math.random().toString(36).substr(2, 9) +
-      Math.random().toString(36).substr(2, 9)
-    );
+    return randomUUID();
   }
 
   public on<K extends keyof TComfyAPIEventMap>(
