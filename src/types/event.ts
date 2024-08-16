@@ -72,7 +72,7 @@ export type TEventKey =
   | "execution_start"
   | "execution_error"
   | "execution_cached"
-  | "crystools.monitor"
+  | "system_monitor"
   | "reconnected"
   | "reconnecting"
   | "b_preview";
@@ -86,7 +86,7 @@ export type TComfyAPIEventMap = {
   disconnected: CustomEvent<null>;
   reconnecting: CustomEvent<null>;
   reconnected: CustomEvent<null>;
-  "crystools.monitor": CustomEvent<TMonitorEvent>;
+  system_monitor: CustomEvent<TMonitorEvent>;
   b_preview: CustomEvent<Blob>;
   execution_start: CustomEvent<TExecution>;
   executing: CustomEvent<TExecuting>;
@@ -106,6 +106,7 @@ export type TComfyPoolEventKey =
   | "add_job"
   | "have_job"
   | "idle"
+  | "ready"
   | "change_mode"
   | "connected"
   | "disconnected"
@@ -122,6 +123,7 @@ export type TComfyPoolEventMap = {
     clientIdx: number;
     res: Response;
   }>;
+  ready: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   auth_success: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   loading_client: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   change_mode: CustomEvent<{ mode: EQueueMode }>;
@@ -140,16 +142,9 @@ export type TComfyPoolEventMap = {
     clientIdx: number;
     error: Error;
   }>;
-  system_monitor: CustomEvent<
-    { client: ComfyApi; clientIdx: number } & (
-      | {
-          type: "websocket";
-          data: TMonitorEvent;
-        }
-      | {
-          type: "polling";
-          data: SystemStatsResponse;
-        }
-    )
-  >;
+  system_monitor: CustomEvent<{
+    client: ComfyApi;
+    clientIdx: number;
+    data: TMonitorEvent;
+  }>;
 };

@@ -17,9 +17,11 @@ import {
   LOAD_CHECKPOINTS_EXTENSION,
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
+  SYSTEM_INFO_EXTENSION,
 } from "./contansts";
-import { TComfyAPIEventMap } from "./types/event";
+import { TComfyAPIEventMap, TMonitorEvent } from "./types/event";
 import { randomUUID } from "crypto";
+import { delay } from "./tools";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -32,11 +34,39 @@ export class ComfyApi extends EventTarget {
   public osType: OSType;
   private apiBase: string;
   private clientId: string | null;
+  private resources: TMonitorEvent;
   private socket: WebSocket | null = null;
   private credentials: BasicCredentials | null = null;
 
+  private features: {
+    /**
+     * This client is ready to use the API.
+     */
+    ready: boolean;
+    /**
+     * This client is installed Comfui-Manger, able to use advanced features.
+     */
+    manager: boolean;
+    /**
+     * This client is installed Crystools, able to use monitoring features.
+     */
+    monitoring: boolean;
+  } = {
+    ready: false,
+    manager: false,
+    monitoring: false,
+  };
+
   static generateId(): string {
     return randomUUID();
+  }
+
+  get haveManager(): boolean {
+    return this.features.manager;
+  }
+
+  get haveMonitoring(): boolean {
+    return this.features.monitoring;
   }
 
   public on<K extends keyof TComfyAPIEventMap>(
@@ -110,6 +140,32 @@ export class ComfyApi extends EventTarget {
       }
       return false;
     }
+  }
+
+  private async testFeatures() {
+    const monitorExt = this.getNodeDefs(SYSTEM_INFO_EXTENSION).then((data) => {
+      if (data) this.features.monitoring = true;
+    });
+    const managerExt = this.fetchApi("/manager/default_ui").then((data) => {
+      if (data.ok) this.features.manager = true;
+    });
+    await Promise.all([monitorExt, managerExt]);
+    /**
+     * Mark the client is ready to use the API.
+     */
+    this.features.ready = true;
+  }
+
+  /**
+   * Retrieves the system resources.
+   *
+   * @returns Either `false` if monitoring is disabled or an instance of `TMonitorEvent` containing the system resources.
+   */
+  getSystemResources(): false | TMonitorEvent {
+    if (!this.haveMonitoring) {
+      return false;
+    }
+    return this.resources;
   }
 
   private async fetchApi(
@@ -676,6 +732,17 @@ export class ComfyApi extends EventTarget {
      * Get system OS type on initialization.
      */
     this.pullOsType();
+    /**
+     * Test features on initialization.
+     */
+    this.testFeatures();
+    return this;
+  }
+
+  async waitForReady() {
+    while (!this.features.ready) {
+      await delay(100);
+    }
     return this;
   }
 
@@ -776,8 +843,15 @@ export class ComfyApi extends EventTarget {
         } else if (typeof event.data === "string") {
           const msg = JSON.parse(event.data);
           if (!msg.data || !msg.type) return;
-          this.dispatchEvent(new CustomEvent("all", { detail: msg }));
-          this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+          if (msg.type === "crystools.monitor") {
+            this.resources = msg.data;
+            this.dispatchEvent(
+              new CustomEvent("system_monitor", { detail: msg.data })
+            );
+          } else {
+            this.dispatchEvent(new CustomEvent("all", { detail: msg }));
+            this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
+          }
           if (msg.data.sid) {
             this.clientId = msg.data.sid;
           }
