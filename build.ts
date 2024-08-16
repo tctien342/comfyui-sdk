@@ -1,4 +1,3 @@
-/// <reference types="bun-types" />
 import { generateDtsBundle } from "dts-bundle-generator";
 import fs from "fs";
 

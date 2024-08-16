@@ -291,23 +291,19 @@ export class ComfyPool extends EventTarget {
   }
 
   private async bindClientSystemMonitor(client: ComfyApi, index: number) {
-    if (client.haveMonitoring) {
-      this.bindWsSystemMonitor(client, index);
+    if (client.ext.monitor.isSupported) {
+      client.ext.monitor.on("system_monitor", (ev) => {
+        this.dispatchEvent(
+          new CustomEvent("system_monitor", {
+            detail: {
+              client,
+              data: ev.detail,
+              clientIdx: index,
+            },
+          })
+        );
+      });
     }
-  }
-
-  private bindWsSystemMonitor(client: ComfyApi, index: number) {
-    client.on("system_monitor", (ev) => {
-      this.dispatchEvent(
-        new CustomEvent("system_monitor", {
-          detail: {
-            client,
-            data: ev.detail,
-            clientIdx: index,
-          },
-        })
-      );
-    });
   }
 
   private pushJobByWeight(item: JobItem): number {

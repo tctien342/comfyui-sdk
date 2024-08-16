@@ -7,6 +7,7 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "allowJs": false,
+    "skipLibCheck": true,
     "jsx": "react",
     "declaration": true,
     "moduleResolution": "node",

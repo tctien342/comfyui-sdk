@@ -15,17 +15,18 @@
   },
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
-    "dts-bundle-generator": "^9.5.1",
+    "@types/bun": "^1.1.6",
+    "@types/ws": "^8.5.12",
     "auto-changelog": "^2.3.0",
     "commitizen": "^4.2.4",
-    "cz-conventional-changelog": "^3.3.0"
+    "cz-conventional-changelog": "^3.3.0",
+    "dts-bundle-generator": "^9.5.1"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
     "@types/node": "^22.2.0",
-    "bun-types": "^1.1.22",
     "ws": "^8.18.0"
   },
   "scripts": {

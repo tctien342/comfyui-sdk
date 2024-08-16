@@ -17,11 +17,12 @@ import {
   LOAD_CHECKPOINTS_EXTENSION,
   LOAD_KSAMPLER_EXTENSION,
   LOAD_LORAS_EXTENSION,
-  SYSTEM_INFO_EXTENSION,
 } from "./contansts";
-import { TComfyAPIEventMap, TMonitorEvent } from "./types/event";
+import { TComfyAPIEventMap } from "./types/event";
 import { randomUUID } from "crypto";
 import { delay } from "./tools";
+import { ManagerFeature } from "./features/manager";
+import { MonitoringFeature } from "./features/monitoring";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -32,41 +33,26 @@ interface FetchOptions extends RequestInit {
 export class ComfyApi extends EventTarget {
   public apiHost: string;
   public osType: OSType;
+  public isReady: boolean = false;
+
   private apiBase: string;
   private clientId: string | null;
-  private resources: TMonitorEvent;
   private socket: WebSocket | null = null;
   private credentials: BasicCredentials | null = null;
 
-  private features: {
+  public ext = {
     /**
-     * This client is ready to use the API.
+     * Interact with ComfyUI-Manager Extension
      */
-    ready: boolean;
+    manager: new ManagerFeature(this),
     /**
-     * This client is installed Comfui-Manger, able to use advanced features.
+     * Interact with ComfyUI-Crystools Extension for track system resouces
      */
-    manager: boolean;
-    /**
-     * This client is installed Crystools, able to use monitoring features.
-     */
-    monitoring: boolean;
-  } = {
-    ready: false,
-    manager: false,
-    monitoring: false,
+    monitor: new MonitoringFeature(this),
   };
 
   static generateId(): string {
     return randomUUID();
-  }
-
-  get haveManager(): boolean {
-    return this.features.manager;
-  }
-
-  get haveMonitoring(): boolean {
-    return this.features.monitoring;
   }
 
   public on<K extends keyof TComfyAPIEventMap>(
@@ -88,6 +74,21 @@ export class ComfyApi extends EventTarget {
 
   get id(): string {
     return this.clientId ?? this.apiBase;
+  }
+
+  /**
+   * Retrieves the available features of the client.
+   *
+   * @returns An object containing the available features, where each feature is a key-value pair.
+   */
+  get availabeFeatures() {
+    return Object.keys(this.ext).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: this.ext[key as keyof typeof this.ext].isSupported,
+      }),
+      {}
+    );
   }
 
   constructor(
@@ -143,32 +144,22 @@ export class ComfyApi extends EventTarget {
   }
 
   private async testFeatures() {
-    const monitorExt = this.getNodeDefs(SYSTEM_INFO_EXTENSION).then((data) => {
-      if (data) this.features.monitoring = true;
-    });
-    const managerExt = this.fetchApi("/manager/default_ui").then((data) => {
-      if (data.ok) this.features.manager = true;
-    });
-    await Promise.all([monitorExt, managerExt]);
+    const exts = Object.values(this.ext);
+    await Promise.all([exts.map((ext) => ext.checkSupported())]);
     /**
      * Mark the client is ready to use the API.
      */
-    this.features.ready = true;
+    this.isReady = true;
   }
 
   /**
-   * Retrieves the system resources.
+   * Fetches data from the API.
    *
-   * @returns Either `false` if monitoring is disabled or an instance of `TMonitorEvent` containing the system resources.
+   * @param route - The route to fetch data from.
+   * @param options - The options for the fetch request.
+   * @returns A promise that resolves to the response from the API.
    */
-  getSystemResources(): false | TMonitorEvent {
-    if (!this.haveMonitoring) {
-      return false;
-    }
-    return this.resources;
-  }
-
-  private async fetchApi(
+  public async fetchApi(
     route: string,
     options?: FetchOptions
   ): Promise<Response> {
@@ -740,7 +731,7 @@ export class ComfyApi extends EventTarget {
   }
 
   async waitForReady() {
-    while (!this.features.ready) {
+    while (!this.isReady) {
       await delay(100);
     }
     return this;
@@ -843,15 +834,8 @@ export class ComfyApi extends EventTarget {
         } else if (typeof event.data === "string") {
           const msg = JSON.parse(event.data);
           if (!msg.data || !msg.type) return;
-          if (msg.type === "crystools.monitor") {
-            this.resources = msg.data;
-            this.dispatchEvent(
-              new CustomEvent("system_monitor", { detail: msg.data })
-            );
-          } else {
-            this.dispatchEvent(new CustomEvent("all", { detail: msg }));
-            this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
-          }
+          this.dispatchEvent(new CustomEvent("all", { detail: msg }));
+          this.dispatchEvent(new CustomEvent(msg.type, { detail: msg.data }));
           if (msg.data.sid) {
             this.clientId = msg.data.sid;
           }
