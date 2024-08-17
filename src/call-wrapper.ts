@@ -18,6 +18,11 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   private onPreviewFn?: (ev: Blob, promptId?: string) => void;
   private onPendingFn?: (promptId?: string) => void;
   private onStartFn?: (promptId?: string) => void;
+  private onOutputFn?: (
+    key: keyof T["mapOutputKeys"],
+    data: any,
+    promptId?: string
+  ) => void;
   private onFinishedFn?: (
     data: Record<keyof T["mapOutputKeys"], any>,
     promptId?: string
@@ -73,6 +78,22 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
    */
   onStart(fn: (promptId?: string) => void) {
     this.onStartFn = fn;
+    return this;
+  }
+
+  /**
+   * Sets the callback function to handle the output node when the workflow is executing. This is
+   * useful when you want to handle the output of each nodes as they are being processed.
+   *
+   * All the nodes defined in the `mapOutputKeys` will be passed to this function when node is executed.
+   *
+   * @param fn - The callback function to handle the output.
+   * @returns The current instance of the class.
+   */
+  onOutput(
+    fn: (key: keyof T["mapOutputKeys"], data: any, promptId?: string) => void
+  ) {
+    this.onOutputFn = fn;
     return this;
   }
 
@@ -269,6 +290,7 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
           if (outputKey) {
             this.output[outputKey as keyof T["mapOutputKeys"]] =
               ev.detail.output;
+            this.onOutputFn?.(outputKey, ev.detail.output, this.promptId);
             totalOutput--;
           }
 

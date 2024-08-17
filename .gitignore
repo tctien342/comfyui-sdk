@@ -177,3 +177,4 @@ dist
 build
 
 test.ts
+temp/
