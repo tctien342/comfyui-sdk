@@ -719,15 +719,25 @@ export class ComfyApi extends EventTarget {
    */
   init() {
     this.createSocket();
-    /**
-     * Get system OS type on initialization.
-     */
-    this.pullOsType();
-    /**
-     * Test features on initialization.
-     */
-    this.testFeatures();
+    this.pingSuccess().then(() => {
+      /**
+       * Get system OS type on initialization.
+       */
+      this.pullOsType();
+      /**
+       * Test features on initialization.
+       */
+      this.testFeatures();
+    });
+
     return this;
+  }
+
+  private async pingSuccess() {
+    let ping = await this.ping();
+    while (!ping.status) {
+      ping = await this.ping();
+    }
   }
 
   async waitForReady() {
@@ -748,9 +758,14 @@ export class ComfyApi extends EventTarget {
    * @returns A promise that resolves to `true` if the server is reachable, or `false` otherwise.
    */
   async ping() {
+    const start = performance.now();
     return this.pollStatus(5000)
-      .then(() => true)
-      .catch(() => false);
+      .then(() => {
+        return { status: true, time: performance.now() - start };
+      })
+      .catch(() => {
+        return { status: false };
+      });
   }
 
   /**

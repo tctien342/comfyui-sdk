@@ -1,13 +1,14 @@
 import {
-  EExtensionUpdateCheckResult,
-  IExtensionInfo,
   TDefaultUI,
   TExtensionNodeItem,
-  TExtensionUpdateResult,
-} from "../types/manager";
+  EExtensionUpdateCheckResult,
+  EUpdateResult,
+  IExtensionInfo,
+  TPreviewMethod,
+} from "src/types/manager";
 import { AbstractFeature } from "./abstract";
 
-interface FetchOptions extends RequestInit {
+export interface FetchOptions extends RequestInit {
   headers?: {
     [key: string]: string;
   };
@@ -103,14 +104,34 @@ export class ManagerFeature extends AbstractFeature {
     const data = await this.fetchApi(`/customnode/update_all?mode=${mode}`);
     if (data && data.ok) {
       if (data.status === 200) {
-        return { type: TExtensionUpdateResult.UNCHANGED };
+        return { type: EUpdateResult.UNCHANGED };
       }
       return {
-        type: TExtensionUpdateResult.SUCCESS,
+        type: EUpdateResult.SUCCESS,
         data: (await data.json()) as { updated: number; failed: number },
       } as const;
     }
-    return { type: TExtensionUpdateResult.FAILED };
+    return { type: EUpdateResult.FAILED };
+  }
+
+  /**
+   * Updates the ComfyUI.
+   *
+   * @returns The result of the update operation.
+   */
+  async updateComfyUI() {
+    const data = await this.fetchApi("/comfyui_manager/update_comfyui");
+    if (data) {
+      switch (data.status) {
+        case 200:
+          return EUpdateResult.UNCHANGED;
+        case 201:
+          return EUpdateResult.SUCCESS;
+        default:
+          return EUpdateResult.FAILED;
+      }
+    }
+    return EUpdateResult.FAILED;
   }
 
   /**
@@ -135,6 +156,39 @@ export class ManagerFeature extends AbstractFeature {
     );
     if (data && data.ok) {
       return data.json();
+    }
+    return false;
+  }
+
+  /**
+   * Reboots the instance.
+   *
+   * @returns A promise that resolves to `true` if the instance was successfully rebooted, or `false` otherwise.
+   */
+  async rebootInstance() {
+    const data = await this.fetchApi("/manager/reboot").catch((e) => {
+      return true;
+    });
+    if (data !== true) return false;
+    return true;
+  }
+
+  /**
+   * Return the current preview method. Will set to `mode` if provided.
+   *
+   * @param mode - The preview method mode.
+   * @returns The result of the preview method.
+   */
+  async previewMethod(mode?: TPreviewMethod) {
+    let callURL = "/manager/default_ui";
+    if (mode) {
+      callURL += `?value=${mode}`;
+    }
+    const data = await this.fetchApi(callURL);
+    if (data && data.ok) {
+      const result = await data.text();
+      if (!result) return mode;
+      return result as TPreviewMethod;
     }
     return false;
   }

@@ -1,10 +1,11 @@
 export type TDefaultUI = "none" | "history" | "queue";
+export type TPreviewMethod = "auto" | "latent2rgb" | "taesd" | "none";
 export enum EExtensionUpdateCheckResult {
   NO_UPDATE = 0,
   UPDATE_AVAILABLE = 1,
   FAILED = 2,
 }
-export enum TExtensionUpdateResult {
+export enum EUpdateResult {
   UNCHANGED = 0,
   SUCCESS = 1,
   FAILED = 2,
