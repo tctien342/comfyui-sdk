@@ -736,6 +736,7 @@ export class ComfyApi extends EventTarget {
   private async pingSuccess() {
     let ping = await this.ping();
     while (!ping.status) {
+      await delay(100); // Wait for 100ms before trying again
       ping = await this.ping();
     }
   }

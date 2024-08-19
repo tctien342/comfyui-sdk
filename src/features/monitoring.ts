@@ -28,6 +28,7 @@ export type TMonitorEventMap = {
 
 export class MonitoringFeature extends AbstractFeature {
   private resources?: TMonitorEvent;
+  private binded = false;
 
   async checkSupported() {
     const data = await this.client.getNodeDefs(SYSTEM_MONITOR_EXTENSION);
@@ -68,6 +69,11 @@ export class MonitoringFeature extends AbstractFeature {
   }
 
   private bind() {
+    if (this.binded) {
+      return;
+    } else {
+      this.binded = true;
+    }
     this.client.on("all", (ev) => {
       const msg = ev.detail;
       if (msg.type === "crystools.monitor") {
