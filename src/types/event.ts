@@ -1,6 +1,6 @@
 import { EQueueMode } from "../pool";
 import { ComfyApi } from "../client";
-import { SystemStatsResponse } from "./api";
+import { TMonitorEvent } from "../features/monitoring";
 
 export type TEventStatus = {
   status: {
@@ -41,24 +41,6 @@ export type TExecutionError = TExecution & {
   traceback: string[];
 };
 
-export type TMonitorEvent = {
-  cpu_utilization: number;
-  ram_total: number;
-  ram_used: number;
-  ram_used_percent: number;
-  hdd_total: number;
-  hdd_used: number;
-  hdd_used_percent: number;
-  device_type: "cuda";
-  gpus: Array<{
-    gpu_utilization: number;
-    gpu_temperature: number;
-    vram_total: number;
-    vram_used: number;
-    vram_used_percent: number;
-  }>;
-};
-
 export type TEventKey =
   | "all"
   | "auth_error"
@@ -72,13 +54,12 @@ export type TEventKey =
   | "execution_start"
   | "execution_error"
   | "execution_cached"
-  | "crystools.monitor"
   | "reconnected"
   | "reconnecting"
   | "b_preview";
 
 export type TComfyAPIEventMap = {
-  all: CustomEvent<unknown>;
+  all: CustomEvent<{ type: string; data: any }>;
   auth_error: CustomEvent<Response>;
   auth_success: CustomEvent<null>;
   execution_success: CustomEvent<TExecution>;
@@ -86,7 +67,6 @@ export type TComfyAPIEventMap = {
   disconnected: CustomEvent<null>;
   reconnecting: CustomEvent<null>;
   reconnected: CustomEvent<null>;
-  "crystools.monitor": CustomEvent<TMonitorEvent>;
   b_preview: CustomEvent<Blob>;
   execution_start: CustomEvent<TExecution>;
   executing: CustomEvent<TExecuting>;
@@ -106,6 +86,7 @@ export type TComfyPoolEventKey =
   | "add_job"
   | "have_job"
   | "idle"
+  | "ready"
   | "change_mode"
   | "connected"
   | "disconnected"
@@ -122,6 +103,7 @@ export type TComfyPoolEventMap = {
     clientIdx: number;
     res: Response;
   }>;
+  ready: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   auth_success: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   loading_client: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   change_mode: CustomEvent<{ mode: EQueueMode }>;
@@ -140,16 +122,9 @@ export type TComfyPoolEventMap = {
     clientIdx: number;
     error: Error;
   }>;
-  system_monitor: CustomEvent<
-    { client: ComfyApi; clientIdx: number } & (
-      | {
-          type: "websocket";
-          data: TMonitorEvent;
-        }
-      | {
-          type: "polling";
-          data: SystemStatsResponse;
-        }
-    )
-  >;
+  system_monitor: CustomEvent<{
+    client: ComfyApi;
+    clientIdx: number;
+    data: TMonitorEvent;
+  }>;
 };

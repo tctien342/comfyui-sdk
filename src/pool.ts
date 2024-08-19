@@ -1,7 +1,6 @@
 import { TComfyPoolEventMap } from "./types/event";
 import { ComfyApi } from "./client";
 import { delay } from "./tools";
-import { SYSTEM_INFO_EXTENSION } from "./contansts";
 
 interface JobItem {
   weight: number;
@@ -60,10 +59,12 @@ export class ComfyPool extends EventTarget {
      * Wait before initializing event listeners
      */
     await delay(1);
+
     this.dispatchEvent(new CustomEvent("init"));
-    this.clients.forEach((client, index) =>
+    const clientInit = this.clients.map((client, index) =>
       this.initializeClient(client, index)
     );
+    await Promise.all(clientInit);
     this.pickJob();
   }
 
@@ -89,12 +90,12 @@ export class ComfyPool extends EventTarget {
    * Adds a client to the pool.
    *
    * @param client - The client to be added.
-   * @returns void
+   * @returns Promise<void>
    */
-  addClient(client: ComfyApi): void {
+  async addClient(client: ComfyApi) {
     const index = this.clients.push(client);
     this.clientStates.push({ queueRemaining: 0, locked: false, online: false });
-    this.initializeClient(client, this.clients.length - 1);
+    await this.initializeClient(client, this.clients.length - 1);
     this.dispatchEvent(
       new CustomEvent("added", { detail: { client, clientIdx: index } })
     );
@@ -206,7 +207,7 @@ export class ComfyPool extends EventTarget {
     return Promise.all(jobs.map((task) => this.run(task, weight)));
   }
 
-  private initializeClient(client: ComfyApi, index: number): void {
+  private async initializeClient(client: ComfyApi, index: number) {
     this.dispatchEvent(
       new CustomEvent("loading_client", {
         detail: { client, clientIdx: index },
@@ -279,49 +280,30 @@ export class ComfyPool extends EventTarget {
     });
     this.bindClientSystemMonitor(client, index);
     client.init();
+
+    /**
+     * Wait for the client to be ready before start using it
+     */
+    await client.waitForReady();
+    this.dispatchEvent(
+      new CustomEvent("ready", { detail: { client, clientIdx: index } })
+    );
   }
 
   private async bindClientSystemMonitor(client: ComfyApi, index: number) {
-    const extensionInfo = await client.getNodeDefs(SYSTEM_INFO_EXTENSION);
-    if (extensionInfo) {
-      // Have Crystools extension for update real-time system monitor
-      this.bindWsSystemMonitor(client, index);
-    } else {
-      // No Crystools extension for update real-time system monitor
-      // Use polling instead
-      this.pollingSystemMonitor(client, index);
+    if (client.ext.monitor.isSupported) {
+      client.ext.monitor.on("system_monitor", (ev) => {
+        this.dispatchEvent(
+          new CustomEvent("system_monitor", {
+            detail: {
+              client,
+              data: ev.detail,
+              clientIdx: index,
+            },
+          })
+        );
+      });
     }
-  }
-
-  private bindWsSystemMonitor(client: ComfyApi, index: number) {
-    client.on("crystools.monitor", (ev) => {
-      this.dispatchEvent(
-        new CustomEvent("system_monitor", {
-          detail: {
-            client,
-            type: "websocket",
-            data: ev.detail,
-            clientIdx: index,
-          },
-        })
-      );
-    });
-  }
-
-  private async pollingSystemMonitor(client: ComfyApi, index: number) {
-    const data = await client.getSystemStats();
-    this.dispatchEvent(
-      new CustomEvent("system_monitor", {
-        detail: {
-          client,
-          type: "polling",
-          data,
-          clientIdx: index,
-        },
-      })
-    );
-    await delay(1000);
-    this.pollingSystemMonitor(client, index);
   }
 
   private pushJobByWeight(item: JobItem): number {

@@ -19,6 +19,10 @@ import {
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
 import { TComfyAPIEventMap } from "./types/event";
+import { randomUUID } from "crypto";
+import { delay } from "./tools";
+import { ManagerFeature } from "./features/manager";
+import { MonitoringFeature } from "./features/monitoring";
 
 interface FetchOptions extends RequestInit {
   headers?: {
@@ -29,16 +33,26 @@ interface FetchOptions extends RequestInit {
 export class ComfyApi extends EventTarget {
   public apiHost: string;
   public osType: OSType;
+  public isReady: boolean = false;
+
   private apiBase: string;
   private clientId: string | null;
   private socket: WebSocket | null = null;
   private credentials: BasicCredentials | null = null;
 
+  public ext = {
+    /**
+     * Interact with ComfyUI-Manager Extension
+     */
+    manager: new ManagerFeature(this),
+    /**
+     * Interact with ComfyUI-Crystools Extension for track system resouces
+     */
+    monitor: new MonitoringFeature(this),
+  };
+
   static generateId(): string {
-    return (
-      Math.random().toString(36).substr(2, 9) +
-      Math.random().toString(36).substr(2, 9)
-    );
+    return randomUUID();
   }
 
   public on<K extends keyof TComfyAPIEventMap>(
@@ -60,6 +74,21 @@ export class ComfyApi extends EventTarget {
 
   get id(): string {
     return this.clientId ?? this.apiBase;
+  }
+
+  /**
+   * Retrieves the available features of the client.
+   *
+   * @returns An object containing the available features, where each feature is a key-value pair.
+   */
+  get availabeFeatures() {
+    return Object.keys(this.ext).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: this.ext[key as keyof typeof this.ext].isSupported,
+      }),
+      {}
+    );
   }
 
   constructor(
@@ -114,7 +143,23 @@ export class ComfyApi extends EventTarget {
     }
   }
 
-  private async fetchApi(
+  private async testFeatures() {
+    const exts = Object.values(this.ext);
+    await Promise.all([exts.map((ext) => ext.checkSupported())]);
+    /**
+     * Mark the client is ready to use the API.
+     */
+    this.isReady = true;
+  }
+
+  /**
+   * Fetches data from the API.
+   *
+   * @param route - The route to fetch data from.
+   * @param options - The options for the fetch request.
+   * @returns A promise that resolves to the response from the API.
+   */
+  public async fetchApi(
     route: string,
     options?: FetchOptions
   ): Promise<Response> {
@@ -674,10 +719,32 @@ export class ComfyApi extends EventTarget {
    */
   init() {
     this.createSocket();
-    /**
-     * Get system OS type on initialization.
-     */
-    this.pullOsType();
+    this.pingSuccess().then(() => {
+      /**
+       * Get system OS type on initialization.
+       */
+      this.pullOsType();
+      /**
+       * Test features on initialization.
+       */
+      this.testFeatures();
+    });
+
+    return this;
+  }
+
+  private async pingSuccess() {
+    let ping = await this.ping();
+    while (!ping.status) {
+      await delay(100); // Wait for 100ms before trying again
+      ping = await this.ping();
+    }
+  }
+
+  async waitForReady() {
+    while (!this.isReady) {
+      await delay(100);
+    }
     return this;
   }
 
@@ -692,9 +759,14 @@ export class ComfyApi extends EventTarget {
    * @returns A promise that resolves to `true` if the server is reachable, or `false` otherwise.
    */
   async ping() {
+    const start = performance.now();
     return this.pollStatus(5000)
-      .then(() => true)
-      .catch(() => false);
+      .then(() => {
+        return { status: true, time: performance.now() - start };
+      })
+      .catch(() => {
+        return { status: false };
+      });
   }
 
   /**

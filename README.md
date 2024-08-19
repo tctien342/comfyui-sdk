@@ -55,6 +55,7 @@ bun add @saintno/comfyui-sdk
 import { ComfyApi } from "@saintno/comfyui-sdk";
 
 const api = new ComfyApi("http://localhost:8188", "client-id");
+await api.waitForReady(); // Wait for the client to be ready
 ```
 
 ### Creating a PromptBuilder
@@ -117,6 +118,51 @@ await client.getCheckpoints().then(console.log);
 ```
 
 ## Advanced Usage
+
+### ComfyUI Manager
+
+> Support interact with ComfyUI-Manager extesion, require [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager) to be installed in the ComfyUI instance.
+
+```typescript
+const api = new ComfyApi("http://localhost:8189").init();
+/**
+ * Should wait for the client to be ready for checking supported extensions
+ */
+await api.waitForReady();
+
+if (api.ext.manager.isSupported) {
+  /**
+   * Get the list of all extensions
+   */
+  await api.ext.manager.getExtensionList().then(console.log);
+  //More methods are available, check the `api.ext.manager` reference for more details
+}
+```
+
+### ComfyUI Crystools
+
+> Support listen event from ComfyUI-Crystools extension for tracking system resources, require [ComfyUI-Crystools](https://github.com/crystian/ComfyUI-Crystools) to be installed in the ComfyUI instance.
+
+```typescript
+const api = new ComfyApi("http://localhost:8189").init();
+/**
+ * Should wait for the client to be ready for checking supported extensions
+ */
+await api.waitForReady();
+
+if (api.ext.monitor.isSupported) {
+  /**
+   * Listen to the system monitor event
+   */
+  api.ext.monitor.on("system_monitor", (ev) => {
+    console.log(ev.detail);
+  });
+  /**
+   * Current monitoring data
+   */
+  console.log(api.ext.monitor.monitorData);
+}
+```
 
 ### Connection Pooling
 
