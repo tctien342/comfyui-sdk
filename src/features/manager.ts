@@ -5,6 +5,12 @@ import {
   EUpdateResult,
   IExtensionInfo,
   TPreviewMethod,
+  IInstallExtensionRequest,
+  EInstallType,
+  IExtensionUninstallRequest,
+  IExtensionUpdateRequest,
+  IExtensionActiveRequest,
+  IModelInstallRequest,
 } from "src/types/manager";
 import { AbstractFeature } from "./abstract";
 
@@ -23,7 +29,7 @@ export class ManagerFeature extends AbstractFeature {
     return this.supported;
   }
 
-  async fetchApi(path: string, options?: FetchOptions) {
+  private async fetchApi(path: string, options?: FetchOptions) {
     if (!this.supported) {
       return false;
     }
@@ -46,16 +52,17 @@ export class ManagerFeature extends AbstractFeature {
     if (data && data.ok) {
       return data.text() as Promise<TDefaultUI>;
     }
-    return false;
+    throw new Error("Failed to set default UI", { cause: data });
   }
 
   /**
    * Retrieves a list of extension's nodes based on the specified mode.
    *
-   * Use full to find the node suitable for the current workflow.
+   * Usefull to find the node suitable for the current workflow.
    *
    * @param mode - The mode to determine the source of the nodes. Defaults to "local".
    * @returns A promise that resolves to an array of extension nodes.
+   * @throws An error if the retrieval fails.
    */
   async getNodeMapList(mode: "local" | "nickname" = "local"): Promise<any> {
     const listNodes: TExtensionNodeItem[] = [];
@@ -74,8 +81,9 @@ export class ManagerFeature extends AbstractFeature {
           description: nodeData.description,
         });
       }
+      return listNodes;
     }
-    return listNodes;
+    throw new Error("Failed to get node map list", { cause: data });
   }
 
   /**
@@ -140,6 +148,7 @@ export class ManagerFeature extends AbstractFeature {
    * @param mode - The mode to retrieve the extensions from. Can be "local" or "cache". Defaults to "local".
    * @param skipUpdate - Indicates whether to skip updating the extensions. Defaults to true.
    * @returns A promise that resolves to an object containing the channel and custom nodes, or false if the retrieval fails.
+   * @throws An error if the retrieval fails.
    */
   async getExtensionList(
     mode: "local" | "cache" = "local",
@@ -157,7 +166,7 @@ export class ManagerFeature extends AbstractFeature {
     if (data && data.ok) {
       return data.json();
     }
-    return false;
+    throw new Error("Failed to get extension list", { cause: data });
   }
 
   /**
@@ -178,9 +187,10 @@ export class ManagerFeature extends AbstractFeature {
    *
    * @param mode - The preview method mode.
    * @returns The result of the preview method.
+   * @throws An error if the preview method fails to set.
    */
   async previewMethod(mode?: TPreviewMethod) {
-    let callURL = "/manager/default_ui";
+    let callURL = "/manager/preview_method";
     if (mode) {
       callURL += `?value=${mode}`;
     }
@@ -190,6 +200,154 @@ export class ManagerFeature extends AbstractFeature {
       if (!result) return mode;
       return result as TPreviewMethod;
     }
-    return false;
+    throw new Error("Failed to set preview method", { cause: data });
+  }
+
+  /**
+   * Installs an extension based on the provided configuration.
+   *
+   * @param config - The configuration for the extension installation.
+   * @returns A boolean indicating whether the installation was successful.
+   * @throws An error if the installation fails.
+   */
+  async installExtension(config: IInstallExtensionRequest) {
+    const data = await this.fetchApi("/customnode/install", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to install extension", { cause: data });
+  }
+
+  /**
+   * Try to fix installation of an extension by re-install it again with fixes.
+   *
+   * @param config - The configuration object for fixing the extension.
+   * @returns A boolean indicating whether the extension was fixed successfully.
+   * @throws An error if the fix fails.
+   */
+  async fixInstallExtension(
+    config: Omit<IInstallExtensionRequest, "js_path" | "install_type"> & {
+      install_type: EInstallType.GIT_CLONE;
+    }
+  ) {
+    const data = await this.fetchApi("/customnode/fix", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to fix extension installation", { cause: data });
+  }
+
+  /**
+   * Install an extension from a Git URL.
+   *
+   * @param url - The URL of the Git repository.
+   * @returns A boolean indicating whether the installation was successful.
+   * @throws An error if the installation fails.
+   */
+  async installExtensionFromGit(url: string) {
+    const data = await this.fetchApi("/customnode/install/git_url", {
+      method: "POST",
+      body: url,
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to install extension from git", { cause: data });
+  }
+
+  /**
+   * Installs pip packages.
+   *
+   * @param packages - An array of packages to install.
+   * @returns A boolean indicating whether the installation was successful.
+   * @throws An error if the installation fails.
+   */
+  async installPipPackages(packages: string[]) {
+    const data = await this.fetchApi("/customnode/install/pip", {
+      method: "POST",
+      body: packages.join(" "),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to install pip's packages", { cause: data });
+  }
+
+  /**
+   * Uninstalls an extension.
+   *
+   * @param config - The configuration for uninstalling the extension.
+   * @returns A boolean indicating whether the uninstallation was successful.
+   * @throws An error if the uninstallation fails.
+   */
+  async uninstallExtension(config: IExtensionUninstallRequest) {
+    const data = await this.fetchApi("/customnode/uninstall", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to uninstall extension", { cause: data });
+  }
+
+  /**
+   * Updates the extension with the provided configuration. Only work with git-clone method
+   *
+   * @param config - The configuration object for the extension update.
+   * @returns A boolean indicating whether the extension update was successful.
+   * @throws An error if the extension update fails.
+   */
+  async updateExtension(config: IExtensionUpdateRequest) {
+    const data = await this.fetchApi("/customnode/update", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to update extension", { cause: data });
+  }
+
+  /**
+   * Set the activation of extension.
+   *
+   * @param config - The configuration for the active extension.
+   * @returns A boolean indicating whether the active extension was set successfully.
+   * @throws An error if setting the active extension fails.
+   */
+  async setActiveExtension(config: IExtensionActiveRequest) {
+    const data = await this.fetchApi("/customnode/toggle_active", {
+      method: "POST",
+      body: JSON.stringify(config),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to set active extension", { cause: data });
+  }
+
+  /**
+   * Install a model from given info.
+   *
+   * @param info - The model installation request information.
+   * @returns A boolean indicating whether the model installation was successful.
+   * @throws An error if the model installation fails.
+   */
+  async installModel(info: IModelInstallRequest) {
+    const data = await this.fetchApi("/model/install", {
+      method: "POST",
+      body: JSON.stringify(info),
+    });
+    if (data && data.ok) {
+      return true;
+    }
+    throw new Error("Failed to install model", { cause: data });
   }
 }

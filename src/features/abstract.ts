@@ -30,5 +30,8 @@ export abstract class AbstractFeature extends EventTarget {
     this.removeEventListener(type, callback as any, options);
   }
 
+  /**
+   * Check if this feature is supported by the current client
+   */
   abstract checkSupported(): Promise<boolean>;
 }
