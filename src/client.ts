@@ -19,7 +19,6 @@ import {
   LOAD_LORAS_EXTENSION,
 } from "./contansts";
 import { TComfyAPIEventMap } from "./types/event";
-import { randomUUID } from "crypto";
 import { delay } from "./tools";
 import { ManagerFeature } from "./features/manager";
 import { MonitoringFeature } from "./features/monitoring";
@@ -52,7 +51,14 @@ export class ComfyApi extends EventTarget {
   };
 
   static generateId(): string {
-    return randomUUID();
+    return "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
   }
 
   public on<K extends keyof TComfyAPIEventMap>(
