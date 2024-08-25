@@ -1,4 +1,4 @@
-import { WebSocket } from "ws";
+import { WebSocketClient } from "./socket";
 
 import {
   BasicCredentials,
@@ -36,7 +36,7 @@ export class ComfyApi extends EventTarget {
 
   private apiBase: string;
   private clientId: string | null;
-  private socket: WebSocket | null = null;
+  private socket: WebSocketClient | null = null;
   private credentials: BasicCredentials | null = null;
 
   public ext = {
@@ -175,7 +175,7 @@ export class ComfyApi extends EventTarget {
     options.headers = {
       ...this.getCredentialHeaders(),
     };
-    options.headers["Comfy-User"] = this.clientId || "";
+    options.mode = "cors";
     return fetch(this.apiURL(route), options);
   }
 
@@ -740,10 +740,15 @@ export class ComfyApi extends EventTarget {
   }
 
   private async pingSuccess() {
+    let tries = 0;
     let ping = await this.ping();
     while (!ping.status) {
-      await delay(100); // Wait for 100ms before trying again
+      if (tries > 10) {
+        throw new Error("Can't connect to the server");
+      }
+      await delay(1000); // Wait for 1s before trying again
       ping = await this.ping();
+      tries++;
     }
   }
 
@@ -770,7 +775,8 @@ export class ComfyApi extends EventTarget {
       .then(() => {
         return { status: true, time: performance.now() - start };
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error(error);
         return { status: false };
       });
   }
@@ -783,35 +789,20 @@ export class ComfyApi extends EventTarget {
     if (this.socket) {
       return;
     }
-
     const headers = {
       ...this.getCredentialHeaders(),
     };
     let opened = false;
     let existingSession = "?clientId=" + this.clientId;
-    this.socket = new WebSocket(
+    this.socket = new WebSocketClient(
       `ws${this.apiHost.includes("https:") ? "s" : ""}://${
         this.apiBase
       }/ws${existingSession}`,
-      { headers }
+      {
+        headers,
+      }
     );
-    this.socket.binaryType = "arraybuffer";
-
-    this.socket.addEventListener("open", () => {
-      opened = true;
-      if (isReconnect) {
-        this.dispatchEvent(new CustomEvent("reconnected"));
-      }
-    });
-
-    this.socket.addEventListener("error", () => {
-      if (this.socket) this.socket.close();
-      if (!isReconnect && !opened) {
-        this.pollQueue();
-      }
-    });
-
-    this.socket.addEventListener("close", () => {
+    this.socket.client.onclose = () => {
       setTimeout(() => {
         this.socket = null;
         this.createSocket(true);
@@ -820,18 +811,22 @@ export class ComfyApi extends EventTarget {
         this.dispatchEvent(new CustomEvent("disconnected"));
         this.dispatchEvent(new CustomEvent("reconnecting"));
       }
-    });
-
-    this.socket.addEventListener("message", (event) => {
+    };
+    this.socket.client.onopen = () => {
+      opened = true;
+      if (isReconnect) {
+        this.dispatchEvent(new CustomEvent("reconnected"));
+      }
+    };
+    this.socket.client.onmessage = (event) => {
       try {
-        if (event.data instanceof ArrayBuffer) {
-          const view = new DataView(event.data);
+        if (event.data instanceof Buffer) {
+          const buffer = event.data;
+          const view = new DataView(buffer.buffer);
           const eventType = view.getUint32(0);
-          const buffer = event.data.slice(4);
           switch (eventType) {
             case 1:
-              const view2 = new DataView(event.data);
-              const imageType = view2.getUint32(0);
+              const imageType = view.getUint32(0);
               let imageMime;
               switch (imageType) {
                 case 1:
@@ -865,9 +860,16 @@ export class ComfyApi extends EventTarget {
           console.warn("Unhandled message:", event);
         }
       } catch (error) {
-        console.warn("Unhandled message:", event.data, error);
+        console.warn("Unhandled message:", event, error);
       }
-    });
+    };
+
+    this.socket.client.onerror = () => {
+      if (this.socket) this.socket.client.removeAllListeners?.();
+      if (!isReconnect && !opened) {
+        this.pollQueue();
+      }
+    };
   }
 
   /**

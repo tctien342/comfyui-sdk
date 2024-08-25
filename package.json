@@ -15,6 +15,7 @@
   },
   "homepage": "https://github.com/tctien342/comfyui-sdk#readme",
   "devDependencies": {
+    "@types/node": "^22.2.0",
     "@types/bun": "^1.1.6",
     "@types/ws": "^8.5.12",
     "auto-changelog": "^2.3.0",
@@ -26,7 +27,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@types/node": "^22.2.0",
     "ws": "^8.18.0"
   },
   "scripts": {
