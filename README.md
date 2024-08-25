@@ -55,7 +55,7 @@ bun add @saintno/comfyui-sdk
 import { ComfyApi } from "@saintno/comfyui-sdk";
 
 const api = new ComfyApi("http://localhost:8188", "client-id");
-await api.waitForReady(); // Wait for the client to be ready
+await api.init().waitForReady(); // Initialize websocket and wait for the client to be ready
 ```
 
 ### Creating a PromptBuilder
