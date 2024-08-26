@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "jsx": "react",
     "declaration": true,
+    "resolveJsonModule": true,
     "moduleResolution": "node",
     "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true,
@@ -22,6 +23,6 @@
     "baseUrl": ".",
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src/**/*", "index.ts"],
+  "include": ["src/**/*", "index.ts", "test"],
   "exclude": ["node_modules", "build"]
 }

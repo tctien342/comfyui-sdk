@@ -4,7 +4,7 @@ import { DeepKeys, Simplify } from "./types/tool";
 
 export class PromptBuilder<I extends string, O extends string, T = unknown> {
   prompt: T;
-  mapInputKeys: Partial<Record<I, string>> = {};
+  mapInputKeys: Partial<Record<I, string | string[]>> = {};
   mapOutputKeys: Partial<Record<O, string>> = {};
 
   constructor(prompt: T, inputKeys: I[], outputKeys: O[]) {
@@ -35,14 +35,30 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
   }
 
   /**
-   * Sets the input node for a given key.
+   * Sets the input node for a given key. Can be map multiple keys to the same input.
    *
    * @param input - The input node to set.
-   * @param key - The key to associate with the input node.
+   * @param key - The key(s) to associate with the input node. Can be array of keys.
    * @returns This builder instance.
    */
-  setInputNode(input: I, key: DeepKeys<T>) {
+  setInputNode(input: I, key: DeepKeys<T> | Array<DeepKeys<T>>) {
     this.mapInputKeys[input] = key;
+    return this;
+  }
+
+  /**
+   * Appends mapped key into the input node.
+   *
+   * @param input - The input node to append.
+   * @param key - The key(s) to associate with the input node. Can be array of keys.
+   * @returns The updated prompt builder.
+   */
+  appendInputNode(input: I, key: DeepKeys<T> | Array<DeepKeys<T>>) {
+    let keys = typeof key === "string" ? [key] : key;
+    if (typeof this.mapInputKeys[input] === "string") {
+      this.mapInputKeys[input] = [this.mapInputKeys[input] as string];
+    }
+    this.mapInputKeys[input]?.push(...keys);
     return this;
   }
 
@@ -84,21 +100,26 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
       /**
        * Map the input key to the path in the prompt object
        */
-      const path = newBuilder.mapInputKeys[key] as string;
-      if (!path) {
+      let paths = newBuilder.mapInputKeys[key];
+      if (!paths) {
         throw new Error(`Key ${key} not found`);
       }
-      const keys = path.split(".");
-      let current = newBuilder.prompt as any;
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) {
-          throw new Error(`Key ${keys[i]} not found`);
-        }
-        current = current[keys[i]];
+      if (typeof paths === "string") {
+        paths = [paths];
       }
-      current[keys[keys.length - 1]] = valueToSet;
+      for (const path of paths as string[]) {
+        const keys = path.split(".");
+        let current = newBuilder.prompt as any;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) {
+            throw new Error(`Key ${keys[i]} not found`);
+          }
+          current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = valueToSet;
+      }
     }
-    return newBuilder as Simplify<PromptBuilder<I, O, object>>;
+    return newBuilder as Simplify<typeof this>;
   }
 
   /**
