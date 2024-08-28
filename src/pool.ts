@@ -4,6 +4,14 @@ import { delay } from "./tools";
 
 interface JobItem {
   weight: number;
+  /**
+   * Only one of the following clientIds will be picked.
+   */
+  includeClientIds?: string[];
+  /**
+   * The following clientIds will be excluded from the picking list.
+   */
+  excludeClientIds?: string[];
   fn: (api: ComfyApi, clientIdx?: number) => Promise<void>;
 }
 
@@ -32,6 +40,7 @@ export enum EQueueMode {
 export class ComfyPool extends EventTarget {
   public clients: ComfyApi[] = [];
   private clientStates: Array<{
+    id: string;
     queueRemaining: number;
     locked: string | boolean;
     online: boolean;
@@ -46,7 +55,8 @@ export class ComfyPool extends EventTarget {
     super();
     this.clients = clients;
     this.mode = mode;
-    this.clientStates = clients.map(() => ({
+    this.clientStates = clients.map((client) => ({
+      id: client.id,
       queueRemaining: 0,
       locked: false,
       online: false,
@@ -94,7 +104,12 @@ export class ComfyPool extends EventTarget {
    */
   async addClient(client: ComfyApi) {
     const index = this.clients.push(client);
-    this.clientStates.push({ queueRemaining: 0, locked: false, online: false });
+    this.clientStates.push({
+      id: client.id,
+      queueRemaining: 0,
+      locked: false,
+      online: false,
+    });
     await this.initializeClient(client, this.clients.length - 1);
     this.dispatchEvent(
       new CustomEvent("added", { detail: { client, clientIdx: index } })
@@ -157,16 +172,36 @@ export class ComfyPool extends EventTarget {
   }
 
   /**
+   * Retrieves a `ComfyApi` object from the pool based on the provided ID.
+   * @param id - The ID of the `ComfyApi` object to retrieve.
+   * @returns The `ComfyApi` object with the matching ID, or `undefined` if not found.
+   */
+  pickById(id: string): ComfyApi | undefined {
+    return this.clients.find((c) => c.id === id);
+  }
+
+  /**
    * Executes a job using the provided client and optional client index.
    *
    * @template T The type of the result returned by the job.
    * @param {Function} job The job to be executed.
    * @param {number} [weight] The weight of the job.
+   * @param {Object} [clientFilter] An object containing client filtering options.
    * @returns {Promise<T>} A promise that resolves with the result of the job.
    */
   run<T>(
     job: (client: ComfyApi, clientIdx?: number) => Promise<T>,
-    weight?: number
+    weight?: number,
+    clientFilter?: {
+      /**
+       * Only one of the following clientIds will be picked.
+       */
+      includeIds?: string[];
+      /**
+       * The following clientIds will be excluded from the picking list.
+       */
+      excludeIds?: string[];
+    }
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const fn = async (client: ComfyApi, idx?: number) => {
@@ -188,7 +223,7 @@ export class ComfyPool extends EventTarget {
           );
         }
       };
-      this.claim(fn, weight);
+      this.claim(fn, weight, clientFilter);
     });
   }
 
@@ -198,13 +233,26 @@ export class ComfyPool extends EventTarget {
    * @template T - The type of the result returned by each job.
    * @param jobs - An array of functions that represent the asynchronous jobs to be executed.
    * @param weight - An optional weight value to assign to each job.
+   * @param clientFilter - An optional object containing client filtering options.
    * @returns A promise that resolves to an array of results, in the same order as the jobs array.
    */
   batch<T>(
     jobs: Array<(client: ComfyApi, clientIdx?: number) => Promise<T>>,
-    weight?: number
+    weight?: number,
+    clientFilter?: {
+      /**
+       * Only one of the following clientIds will be picked.
+       */
+      includeIds?: string[];
+      /**
+       * The following clientIds will be excluded from the picking list.
+       */
+      excludeIds?: string[];
+    }
   ): Promise<T[]> {
-    return Promise.all(jobs.map((task) => this.run(task, weight)));
+    return Promise.all(
+      jobs.map((task) => this.run(task, weight, clientFilter))
+    );
   }
 
   private async initializeClient(client: ComfyApi, index: number) {
@@ -318,12 +366,18 @@ export class ComfyPool extends EventTarget {
 
   private async claim(
     fn: (client: ComfyApi, clientIdx?: number) => Promise<void>,
-    weight?: number
+    weight?: number,
+    clientFilter?: {
+      includeIds?: string[];
+      excludeIds?: string[];
+    }
   ): Promise<void> {
     const inputWeight = weight === undefined ? this.jobQueue.length : weight;
     const idx = this.pushJobByWeight({
       weight: inputWeight,
       fn,
+      excludeClientIds: clientFilter?.excludeIds,
+      includeClientIds: clientFilter?.includeIds,
     });
     this.dispatchEvent(
       new CustomEvent("add_job", {
@@ -332,30 +386,45 @@ export class ComfyPool extends EventTarget {
     );
   }
 
-  private async getAvailableClient(): Promise<ComfyApi> {
+  private async getAvailableClient(
+    includeIds?: string[],
+    excludeIds?: string[]
+  ): Promise<ComfyApi> {
+    const acceptedClients = this.clientStates.filter((c) => {
+      if (!c.online) return false;
+      if (includeIds && includeIds.length > 0) {
+        return includeIds.includes(c.id);
+      }
+      if (excludeIds && excludeIds.length > 0) {
+        return !excludeIds.includes(c.id);
+      }
+      return true;
+    });
     while (true) {
       let index = -1;
       switch (this.mode) {
         case EQueueMode.PICK_ZERO:
-          index = this.clientStates.findIndex(
-            (c) => c.queueRemaining === 0 && !c.locked && c.online
+          index = acceptedClients.findIndex(
+            (c) => c.queueRemaining === 0 && !c.locked && c.id
           );
           break;
         case EQueueMode.PICK_LOWEST:
-          const queueSizes = this.clientStates.map((state) =>
+          const queueSizes = acceptedClients.map((state) =>
             state.online ? state.queueRemaining : Number.MAX_SAFE_INTEGER
           );
           index = queueSizes.indexOf(Math.min(...queueSizes));
           break;
         case EQueueMode.PICK_ROUTINE:
-          index = this.routineIdx++ % this.clients.length;
-          this.routineIdx = this.routineIdx % this.clients.length;
-          if (!this.clientStates[index].online) index = -1;
+          index = this.routineIdx++ % acceptedClients.length;
+          this.routineIdx = this.routineIdx % acceptedClients.length;
           break;
       }
-      if (index !== -1 && !this.clientStates[index].locked) {
-        this.clientStates[index].locked = true;
-        const client = this.clients[index];
+      if (index !== -1) {
+        const trueIdx = this.clientStates.findIndex(
+          (c) => c.id === acceptedClients[index].id
+        );
+        this.clientStates[trueIdx].locked = true;
+        const client = this.clients[trueIdx];
         return client;
       }
       await delay(20);
@@ -367,9 +436,12 @@ export class ComfyPool extends EventTarget {
       await delay(100);
       return this.pickJob();
     }
-    const client = await this.getAvailableClient();
-    const clientIdx = this.clients.indexOf(client);
     const job = this.jobQueue.shift();
+    const client = await this.getAvailableClient(
+      job?.includeClientIds,
+      job?.excludeClientIds
+    );
+    const clientIdx = this.clients.indexOf(client);
     job?.fn?.(client, clientIdx);
     this.pickJob();
   }
