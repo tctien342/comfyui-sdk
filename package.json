@@ -27,6 +27,16 @@
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
+  "keywords": [
+    "comfyui",
+    "sdk",
+    "typescript",
+    "ts",
+    "comfy",
+    "stable-diffusion",
+    "comfyui-api",
+    "comfyui-sdk"
+  ],
   "dependencies": {
     "ws": "^8.18.0"
   },

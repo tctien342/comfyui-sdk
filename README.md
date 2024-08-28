@@ -74,6 +74,7 @@ const promptBuilder = new PromptBuilder(
   .setInputNode("negative", "7.inputs.text")
   .setInputNode("seed", "3.inputs.seed")
   .setInputNode("steps", "3.inputs.steps")
+  .setInputNode("size", ["7.inputs.width", "7.inputs.height"]) // Bind multiple values to a single key
   .setOutputNode("images", "9");
 ```
 
