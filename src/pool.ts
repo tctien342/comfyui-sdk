@@ -326,8 +326,8 @@ export class ComfyPool extends EventTarget {
         })
       );
     });
+    await client.init().waitForReady();
     this.bindClientSystemMonitor(client, index);
-    client.init();
 
     /**
      * Wait for the client to be ready before start using it
