@@ -865,7 +865,6 @@ export class ComfyApi extends EventTarget {
     };
 
     this.socket.client.onerror = () => {
-      if (this.socket) this.socket.client.removeAllListeners?.();
       if (!isReconnect && !opened) {
         this.pollQueue();
       }
