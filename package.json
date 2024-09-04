@@ -1,6 +1,6 @@
 {
   "name": "@saintno/comfyui-sdk",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "SDK for ComfyUI",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
