@@ -1,5 +1,7 @@
 // src/WebSocketClient.ts
 
+import WebSocketLib from "ws";
+
 let WebSocketImpl: typeof WebSocket;
 
 if (typeof window !== "undefined" && window.WebSocket) {
@@ -7,7 +9,7 @@ if (typeof window !== "undefined" && window.WebSocket) {
   WebSocketImpl = window.WebSocket;
 } else {
   // In a Node.js environment
-  WebSocketImpl = require("ws");
+  WebSocketImpl = WebSocketLib as any;
 }
 
 export interface WebSocketClientOptions {
