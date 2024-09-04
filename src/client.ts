@@ -151,7 +151,7 @@ export class ComfyApi extends EventTarget {
 
   private async testFeatures() {
     const exts = Object.values(this.ext);
-    await Promise.all([exts.map((ext) => ext.checkSupported())]);
+    await Promise.all(exts.map((ext) => ext.checkSupported()));
     /**
      * Mark the client is ready to use the API.
      */

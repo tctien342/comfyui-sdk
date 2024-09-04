@@ -326,13 +326,11 @@ export class ComfyPool extends EventTarget {
         })
       );
     });
-    await client.init().waitForReady();
-    this.bindClientSystemMonitor(client, index);
-
     /**
      * Wait for the client to be ready before start using it
      */
-    await client.waitForReady();
+    await client.init().waitForReady();
+    this.bindClientSystemMonitor(client, index);
     this.dispatchEvent(
       new CustomEvent("ready", { detail: { client, clientIdx: index } })
     );
@@ -351,6 +349,8 @@ export class ComfyPool extends EventTarget {
           })
         );
       });
+    } else {
+      console.log("NOT SUPPORTED");
     }
   }
 
