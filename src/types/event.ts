@@ -55,6 +55,8 @@ export type TEventKey =
   | "execution_error"
   | "execution_cached"
   | "reconnected"
+  | "connected"
+  | "log"
   | "reconnecting"
   | "b_preview";
 
@@ -66,8 +68,10 @@ export type TComfyAPIEventMap = {
   status: CustomEvent<TEventStatus>;
   disconnected: CustomEvent<null>;
   reconnecting: CustomEvent<null>;
+  connected: CustomEvent<null>;
   reconnected: CustomEvent<null>;
   b_preview: CustomEvent<Blob>;
+  log: CustomEvent<{ msg: string; data: any }>;
   execution_start: CustomEvent<TExecution>;
   executing: CustomEvent<TExecuting>;
   progress: CustomEvent<TProgress>;
