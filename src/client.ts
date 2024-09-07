@@ -384,7 +384,9 @@ export class ComfyApi extends EventTarget {
    * @returns {Promise<NodeDefsResponse>} The node definitions.
    */
   async getNodeDefs(nodeName?: string): Promise<NodeDefsResponse | null> {
-    const response = await this.fetchApi(`/object_info/${nodeName ?? ""}`);
+    const response = await this.fetchApi(
+      `/object_info${nodeName ? `/${nodeName}` : ""}`
+    );
     const result = await response.json();
     if (Object.keys(result).length === 0) {
       return null;
