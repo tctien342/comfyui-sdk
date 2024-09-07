@@ -113,6 +113,13 @@ export interface NodeDef {
     required: {
       [key: string]: any;
     };
+    hidden: {
+      [key: string]: any;
+    };
+  };
+  input_order: {
+    required: string[];
+    hidden: string[];
   };
   output: string[];
   output_is_list: boolean[];
@@ -121,7 +128,9 @@ export interface NodeDef {
   display_name: string;
   description: string;
   category: string;
+  python_module: string;
   output_node: boolean;
+  output_tooltips: string[];
 }
 
 export interface NodeProgress {
