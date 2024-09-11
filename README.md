@@ -2,6 +2,8 @@
 
 A comprehensive Node.js client library for interacting with ComfyUI APIs. This powerful and flexible library provides a robust set of tools for managing ComfyUI instances, building prompts, and executing workflows with ease and type safety.
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow.svg)](https://www.buymeacoffee.com/tctien342)
+
 ## Table of Contents
 
 1. [Features](#features)
