@@ -349,9 +349,10 @@ export class ComfyApi extends EventTarget {
   async getCheckpoints(): Promise<string[]> {
     const nodeInfo = await this.getNodeDefs(LOAD_CHECKPOINTS_EXTENSION);
     if (!nodeInfo) return [];
-    return (
-      nodeInfo[LOAD_CHECKPOINTS_EXTENSION].input.required?.ckpt_name?.[0] ?? []
-    );
+    const output =
+      nodeInfo[LOAD_CHECKPOINTS_EXTENSION].input.required?.ckpt_name?.[0];
+    if (!output) return [];
+    return output as string[];
   }
 
   /**
@@ -361,7 +362,10 @@ export class ComfyApi extends EventTarget {
   async getLoras(): Promise<string[]> {
     const nodeInfo = await this.getNodeDefs(LOAD_LORAS_EXTENSION);
     if (!nodeInfo) return [];
-    return nodeInfo[LOAD_LORAS_EXTENSION].input.required?.lora_name?.[0] ?? [];
+    const output =
+      nodeInfo[LOAD_LORAS_EXTENSION].input.required?.lora_name?.[0];
+    if (!output) return [];
+    return output as string[];
   }
 
   /**

@@ -110,7 +110,7 @@ export class ComfyPool extends EventTarget {
       locked: false,
       online: false,
     });
-    await this.initializeClient(client, this.clients.length - 1);
+    await this.initializeClient(client, index - 1);
     this.dispatchEvent(
       new CustomEvent("added", { detail: { client, clientIdx: index } })
     );

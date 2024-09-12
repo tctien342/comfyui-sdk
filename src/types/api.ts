@@ -111,10 +111,15 @@ export interface NodeDefsResponse {
 export interface NodeDef {
   input: {
     required: {
-      [key: string]: any;
+      [key: string]:
+        | [string[], { tooltip?: string }]
+        | [string, { tooltip?: string }]
+        | TStringInput
+        | TBoolInput
+        | TNumberInput;
     };
     hidden: {
-      [key: string]: any;
+      [key: string]: string;
     };
   };
   input_order: {
@@ -139,3 +144,22 @@ export interface NodeProgress {
   prompt_id: string;
   node: string;
 }
+
+export interface IInputNumberConfig {
+  default: number;
+  min: number;
+  max: number;
+  step?: number;
+  round?: number;
+  tooltip?: string;
+}
+export interface IInputStringConfig {
+  default?: string;
+  multiline?: boolean;
+  dynamicPrompts?: boolean;
+  tooltip?: string;
+}
+
+export type TStringInput = ["STRING", IInputStringConfig];
+export type TBoolInput = ["BOOLEAN", { default: boolean; tooltip?: string }];
+export type TNumberInput = ["INT" | "FLOAT", IInputNumberConfig];
