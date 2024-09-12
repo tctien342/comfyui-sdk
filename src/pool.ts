@@ -270,6 +270,7 @@ export class ComfyPool extends EventTarget {
       }
       states.online = true;
       if (
+        ev.detail.status.exec_info &&
         ev.detail.status.exec_info.queue_remaining !== states.queueRemaining
       ) {
         if (ev.detail.status.exec_info.queue_remaining > 0) {

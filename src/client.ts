@@ -829,15 +829,17 @@ export class ComfyApi extends EventTarget {
       });
   }
 
-  private reconnectWs(opened: boolean) {
-    setTimeout(() => {
-      this.socket = null;
-      this.createSocket(true);
-    }, 300);
+  private async reconnectWs(opened: boolean) {
     if (opened) {
       this.dispatchEvent(new CustomEvent("disconnected"));
       this.dispatchEvent(new CustomEvent("reconnecting"));
     }
+    setTimeout(() => {
+      this.socket?.client.terminate();
+      this.socket?.close();
+      this.socket = null;
+      this.createSocket(true);
+    }, 300);
   }
 
   /**
@@ -845,9 +847,6 @@ export class ComfyApi extends EventTarget {
    * @param {boolean} isReconnect If the socket connection is a reconnect attempt.
    */
   private createSocket(isReconnect: boolean = false) {
-    if (this.socket) {
-      return;
-    }
     const headers = {
       ...this.getCredentialHeaders(),
     };
@@ -919,7 +918,6 @@ export class ComfyApi extends EventTarget {
     };
 
     this.socket.client.onerror = () => {
-      this.socket?.client.removeAllListeners();
       if (this.forceWs) {
         this.reconnectWs(opened);
       } else if (!isReconnect && !opened) {
