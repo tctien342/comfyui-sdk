@@ -53,29 +53,15 @@ export class ComfyPool extends EventTarget {
 
   constructor(clients: ComfyApi[], mode: EQueueMode = EQueueMode.PICK_ZERO) {
     super();
-    this.clients = clients;
     this.mode = mode;
-    this.clientStates = clients.map((client) => ({
-      id: client.id,
-      queueRemaining: 0,
-      locked: false,
-      online: false,
-    }));
-    this.startUp();
-  }
-
-  private async startUp() {
-    /**
-     * Wait before initializing event listeners
-     */
-    await delay(1);
-
-    this.dispatchEvent(new CustomEvent("init"));
-    const clientInit = this.clients.map((client, index) =>
-      this.initializeClient(client, index)
-    );
-    await Promise.all(clientInit);
-    this.pickJob();
+    // Wait event binded before initializing the pool
+    delay(1).then(() => {
+      this.dispatchEvent(new CustomEvent("init"));
+      clients.forEach((client) => {
+        this.addClient(client);
+      });
+      this.pickJob();
+    });
   }
 
   public on<K extends keyof TComfyPoolEventMap>(
@@ -103,14 +89,14 @@ export class ComfyPool extends EventTarget {
    * @returns Promise<void>
    */
   async addClient(client: ComfyApi) {
-    const index = this.clients.push(client);
+    const index = this.clients.push(client) - 1;
     this.clientStates.push({
       id: client.id,
       queueRemaining: 0,
       locked: false,
       online: false,
     });
-    await this.initializeClient(client, index - 1);
+    await this.initializeClient(client, index);
     this.dispatchEvent(
       new CustomEvent("added", { detail: { client, clientIdx: index } })
     );
@@ -391,18 +377,18 @@ export class ComfyPool extends EventTarget {
     includeIds?: string[],
     excludeIds?: string[]
   ): Promise<ComfyApi> {
-    const acceptedClients = this.clientStates.filter((c) => {
-      if (!c.online) return false;
-      if (includeIds && includeIds.length > 0) {
-        return includeIds.includes(c.id);
-      }
-      if (excludeIds && excludeIds.length > 0) {
-        return !excludeIds.includes(c.id);
-      }
-      return true;
-    });
     while (true) {
       let index = -1;
+      const acceptedClients = this.clientStates.filter((c) => {
+        if (!c.online) return false;
+        if (includeIds && includeIds.length > 0) {
+          return includeIds.includes(c.id);
+        }
+        if (excludeIds && excludeIds.length > 0) {
+          return !excludeIds.includes(c.id);
+        }
+        return true;
+      });
       switch (this.mode) {
         case EQueueMode.PICK_ZERO:
           index = acceptedClients.findIndex(
@@ -420,7 +406,7 @@ export class ComfyPool extends EventTarget {
           this.routineIdx = this.routineIdx % acceptedClients.length;
           break;
       }
-      if (index !== -1) {
+      if (index !== -1 && acceptedClients[index]) {
         const trueIdx = this.clientStates.findIndex(
           (c) => c.id === acceptedClients[index].id
         );

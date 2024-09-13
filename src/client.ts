@@ -35,7 +35,6 @@ export class ComfyApi extends EventTarget {
   public isReady: boolean = false;
 
   private apiBase: string;
-  private forceWs: boolean = false;
   private clientId: string | null;
   private socket: WebSocketClient | null = null;
   private listeners: {
@@ -72,9 +71,10 @@ export class ComfyApi extends EventTarget {
     callback: (event: TComfyAPIEventMap[K]) => void,
     options?: AddEventListenerOptions | boolean
   ) {
+    this.log("on", "Add listener", { type, callback, options });
     this.addEventListener(type, callback as any, options);
     this.listeners.push({ event: type, handler: callback, options });
-    const clr = () => this.off(type, callback);
+    const clr = () => this.off(type, callback, options);
     return clr;
   }
 
@@ -83,6 +83,7 @@ export class ComfyApi extends EventTarget {
     callback: (event: TComfyAPIEventMap[K]) => void,
     options?: EventListenerOptions | boolean
   ): void {
+    this.log("off", "Remove listener", { type, callback, options });
     this.listeners = this.listeners.filter(
       (listener) => listener.event !== type && listener.handler !== callback
     );
@@ -90,6 +91,7 @@ export class ComfyApi extends EventTarget {
   }
 
   public removeAllListeners() {
+    this.log("removeAllListeners", "Triggered");
     this.listeners.forEach((listener) => {
       this.removeEventListener(
         listener.event,
@@ -139,6 +141,11 @@ export class ComfyApi extends EventTarget {
       this.credentials = opts?.credentials;
       this.testCredentials();
     }
+    this.log("constructor", "Initialized", {
+      host,
+      clientId,
+      opts,
+    });
     return this;
   }
 
@@ -148,8 +155,10 @@ export class ComfyApi extends EventTarget {
     this.removeAllListeners();
   }
 
-  private log(message: string, data?: any) {
-    this.dispatchEvent(new CustomEvent("log", { detail: { message, data } }));
+  private log(fnName: string, message: string, data?: any) {
+    this.dispatchEvent(
+      new CustomEvent("log", { detail: { fnName, message, data } })
+    );
   }
 
   private apiURL(route: string): string {
@@ -177,6 +186,7 @@ export class ComfyApi extends EventTarget {
       this.dispatchEvent(new CustomEvent("auth_success"));
       return true;
     } catch (e) {
+      this.log("testCredentials", "Failed", e);
       if (e instanceof Response) {
         if (e.status === 401) {
           this.dispatchEvent(new CustomEvent("auth_error", { detail: e }));
@@ -233,6 +243,7 @@ export class ComfyApi extends EventTarget {
         throw response;
       }
     } catch (error: any) {
+      this.log("pollStatus", "Failed", error);
       if (error.name === "AbortError") {
         throw new Error("Request timed out");
       }
@@ -280,7 +291,7 @@ export class ComfyApi extends EventTarget {
 
       return response.json();
     } catch (e) {
-      this.log("Can't queue prompt", e);
+      this.log("queuePrompt", "Can't queue prompt", e);
       throw e.response as Response;
     }
   }
@@ -508,7 +519,7 @@ export class ComfyApi extends EventTarget {
 
       // Check if the response is successful
       if (!response.ok) {
-        this.log("Upload failed", response);
+        this.log("uploadImage", "Upload failed", response);
         return false;
       }
 
@@ -517,7 +528,7 @@ export class ComfyApi extends EventTarget {
         url: this.getPathImage(mapped),
       };
     } catch (e) {
-      this.log("Upload failed", e);
+      this.log("uploadImage", "Upload failed", e);
       return false;
     }
   }
@@ -554,8 +565,7 @@ export class ComfyApi extends EventTarget {
 
       // Check if the response is successful
       if (!response.ok) {
-        this.log("Upload failed", response);
-        this.dispatchEvent(new CustomEvent("", { detail: response }));
+        this.log("uploadMask", "Upload failed", response);
         return false;
       }
 
@@ -566,7 +576,7 @@ export class ComfyApi extends EventTarget {
         url: this.getPathImage(mapped),
       };
     } catch (error) {
-      this.log("Upload failed", error);
+      this.log("uploadMask", "Upload failed", error);
       return false;
     }
   }
@@ -598,14 +608,14 @@ export class ComfyApi extends EventTarget {
 
       // Check if the response is successful
       if (!response.ok) {
-        this.log("Free memory failed", response);
+        this.log("freeMemory", "Free memory failed", response);
         return false;
       }
 
       // Return the response object
       return true;
     } catch (error) {
-      this.log("Free memory failed", error);
+      this.log("freeMemory", "Free memory failed", error);
       return false;
     }
   }
@@ -674,6 +684,7 @@ export class ComfyApi extends EventTarget {
     );
 
     if (response.status !== 200 && options.throwOnError !== false) {
+      this.log("storeUserData", "Error storing user data file", response);
       throw new Error(
         `Error storing user data file '${file}': ${response.status} ${response.statusText}`
       );
@@ -696,6 +707,7 @@ export class ComfyApi extends EventTarget {
     );
 
     if (response.status !== 204) {
+      this.log("deleteUserData", "Error deleting user data file", response);
       throw new Error(
         `Error removing user data file '${file}': ${response.status} ${response.statusText}`
       );
@@ -746,6 +758,7 @@ export class ComfyApi extends EventTarget {
 
     if (response.status === 404) return [];
     if (response.status !== 200) {
+      this.log("listUserData", "Error getting user data list", response);
       throw new Error(
         `Error getting user data list '${dir}': ${response.status} ${response.statusText}`
       );
@@ -824,7 +837,7 @@ export class ComfyApi extends EventTarget {
         return { status: true, time: performance.now() - start };
       })
       .catch((error) => {
-        this.log("Can't connect to the server", error);
+        this.log("ping", "Can't connect to the server", error);
         return { status: false };
       });
   }
@@ -839,7 +852,7 @@ export class ComfyApi extends EventTarget {
       this.socket?.close();
       this.socket = null;
       this.createSocket(true);
-    }, 300);
+    }, 500);
   }
 
   /**
@@ -847,6 +860,9 @@ export class ComfyApi extends EventTarget {
    * @param {boolean} isReconnect If the socket connection is a reconnect attempt.
    */
   private createSocket(isReconnect: boolean = false) {
+    if (this.socket) {
+      return;
+    }
     const headers = {
       ...this.getCredentialHeaders(),
     };
@@ -861,9 +877,11 @@ export class ComfyApi extends EventTarget {
       }
     );
     this.socket.client.onclose = () => {
+      this.log("socket", "Socket closed -> Reconnecting");
       this.reconnectWs(opened);
     };
     this.socket.client.onopen = () => {
+      this.log("socket", "Socket opened");
       opened = true;
       if (isReconnect) {
         this.dispatchEvent(new CustomEvent("reconnected"));
@@ -910,35 +928,15 @@ export class ComfyApi extends EventTarget {
             this.clientId = msg.data.sid;
           }
         } else {
-          this.log("Unhandled message", event);
+          this.log("socket", "Unhandled message", event);
         }
       } catch (error) {
-        this.log("Unhandled message", { event, error });
+        this.log("socket", "Unhandled message", { event, error });
       }
     };
 
-    this.socket.client.onerror = () => {
-      if (this.forceWs) {
-        this.reconnectWs(opened);
-      } else if (!isReconnect && !opened) {
-        this.pollQueue();
-      }
+    this.socket.client.onerror = (e) => {
+      this.log("socket", "Socket error", e);
     };
-  }
-
-  /**
-   * Polls the status queue for updates.
-   * Used for environments that do not support WebSockets.
-   */
-  private pollQueue() {
-    setInterval(async () => {
-      try {
-        const response = await this.fetchApi("/prompt");
-        const status = await response.json();
-        this.dispatchEvent(new CustomEvent("status", { detail: status }));
-      } catch (error) {
-        this.dispatchEvent(new CustomEvent("disconnected", { detail: null }));
-      }
-    }, 1000);
   }
 }
