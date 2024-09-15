@@ -44,6 +44,7 @@ export type TExecutionError = TExecution & {
 export type TEventKey =
   | "all"
   | "auth_error"
+  | "connection_error"
   | "auth_success"
   | "status"
   | "progress"
@@ -64,6 +65,7 @@ export type TComfyAPIEventMap = {
   all: CustomEvent<{ type: string; data: any }>;
   auth_error: CustomEvent<Response>;
   auth_success: CustomEvent<null>;
+  connection_error: CustomEvent<Error>;
   execution_success: CustomEvent<TExecution>;
   status: CustomEvent<TEventStatus>;
   disconnected: CustomEvent<null>;
@@ -84,6 +86,7 @@ export type TComfyPoolEventKey =
   | "init"
   | "init_client"
   | "auth_error"
+  | "connection_error"
   | "auth_success"
   | "added"
   | "removed"
@@ -106,6 +109,11 @@ export type TComfyPoolEventMap = {
     client: ComfyApi;
     clientIdx: number;
     res: Response;
+  }>;
+  connection_error: CustomEvent<{
+    client: ComfyApi;
+    clientIdx: number;
+    error: Error;
   }>;
   ready: CustomEvent<{ client: ComfyApi; clientIdx: number }>;
   auth_success: CustomEvent<{ client: ComfyApi; clientIdx: number }>;

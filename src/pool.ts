@@ -313,6 +313,13 @@ export class ComfyPool extends EventTarget {
         })
       );
     });
+    client.on("connection_error", (ev) => {
+      this.dispatchEvent(
+        new CustomEvent("connection_error", {
+          detail: { client, clientIdx: index, res: ev.detail },
+        })
+      );
+    });
     /**
      * Wait for the client to be ready before start using it
      */

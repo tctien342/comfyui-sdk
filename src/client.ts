@@ -190,8 +190,10 @@ export class ComfyApi extends EventTarget {
       if (e instanceof Response) {
         if (e.status === 401) {
           this.dispatchEvent(new CustomEvent("auth_error", { detail: e }));
+          return;
         }
       }
+      this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
       return false;
     }
   }
@@ -786,16 +788,21 @@ export class ComfyApi extends EventTarget {
    */
   init(maxTries = 10, delayTime = 1000) {
     this.createSocket();
-    this.pingSuccess(maxTries, delayTime).then(() => {
-      /**
-       * Get system OS type on initialization.
-       */
-      this.pullOsType();
-      /**
-       * Test features on initialization.
-       */
-      this.testFeatures();
-    });
+    this.pingSuccess(maxTries, delayTime)
+      .then(() => {
+        /**
+         * Get system OS type on initialization.
+         */
+        this.pullOsType();
+        /**
+         * Test features on initialization.
+         */
+        this.testFeatures();
+      })
+      .catch((e) => {
+        this.log("init", "Failed", e);
+        this.dispatchEvent(new CustomEvent("connection_error", { detail: e }));
+      });
 
     return this;
   }
@@ -834,11 +841,11 @@ export class ComfyApi extends EventTarget {
     const start = performance.now();
     return this.pollStatus(5000)
       .then(() => {
-        return { status: true, time: performance.now() - start };
+        return { status: true, time: performance.now() - start } as const;
       })
       .catch((error) => {
         this.log("ping", "Can't connect to the server", error);
-        return { status: false };
+        return { status: false } as const;
       });
   }
 
