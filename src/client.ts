@@ -257,12 +257,12 @@ export class ComfyApi extends EventTarget {
 
   /**
    * Queues a prompt for processing.
-   * @param {number} number The index at which to queue the prompt.
+   * @param {number} number The index at which to queue the prompt. using NULL will append to the end of the queue.
    * @param {object} workflow Additional workflow data.
    * @returns {Promise<QueuePromptResponse>} The response from the API.
    */
   async queuePrompt(
-    number: number,
+    number: number | null,
     workflow: object
   ): Promise<QueuePromptResponse> {
     const body = {
@@ -270,10 +270,12 @@ export class ComfyApi extends EventTarget {
       prompt: workflow,
     } as any;
 
-    if (number === -1) {
-      body["front"] = true;
-    } else if (number !== 0) {
-      body["number"] = number;
+    if (number !== null) {
+      if (number === -1) {
+        body["front"] = true;
+      } else if (number !== 0) {
+        body["number"] = number;
+      }
     }
 
     try {
@@ -296,6 +298,16 @@ export class ComfyApi extends EventTarget {
       this.log("queuePrompt", "Can't queue prompt", e);
       throw e.response as Response;
     }
+  }
+
+  /**
+   * Appends a prompt to the workflow queue.
+   *
+   * @param {object} workflow Additional workflow data.
+   * @returns {Promise<QueuePromptResponse>} The response from the API.
+   */
+  async appendPrompt(workflow: object): Promise<QueuePromptResponse> {
+    return this.queuePrompt(null, workflow);
   }
 
   /**

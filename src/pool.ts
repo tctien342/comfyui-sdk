@@ -343,8 +343,6 @@ export class ComfyPool extends EventTarget {
           })
         );
       });
-    } else {
-      console.log("NOT SUPPORTED");
     }
   }
 

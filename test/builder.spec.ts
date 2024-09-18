@@ -1,6 +1,8 @@
 import { PromptBuilder } from "src/prompt-builder";
 import Prompt from "../examples/example-txt2img-workflow.json";
 
+import { describe, beforeEach, it, expect } from "bun:test";
+
 describe("PromptBuilder with complex input", () => {
   let promptBuilder: PromptBuilder<"size", "images", typeof Prompt>;
 
@@ -50,5 +52,24 @@ describe("PromptBuilder with complex input", () => {
     );
     expect(promptBuilder.prompt["11"].inputs.upscale_model).toEqual(["10", 0]);
     expect(promptBuilder.prompt["12"].inputs.filename_prefix).toBe("ComfyUI");
+  });
+
+  it("should clone the prompt builder correctly", () => {
+    const clonedBuilder = promptBuilder.clone();
+
+    expect(clonedBuilder).not.toBe(promptBuilder);
+    expect(clonedBuilder.prompt).toEqual(promptBuilder.prompt);
+    expect(clonedBuilder.mapInputKeys).toEqual(promptBuilder.mapInputKeys);
+    expect(clonedBuilder.mapOutputKeys).toEqual(promptBuilder.mapOutputKeys);
+  });
+
+  it("should get the workflow correctly", () => {
+    const workflow = promptBuilder.workflow;
+    expect(workflow).toEqual(Prompt);
+  });
+
+  it("should return the same instance when calling caller", () => {
+    const callerInstance = promptBuilder.caller;
+    expect(callerInstance).toBe(promptBuilder);
   });
 });

@@ -215,7 +215,7 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
 
   private async enqueueJob() {
     const job = await this.client
-      .queuePrompt(-1, this.prompt.workflow)
+      .appendPrompt(this.prompt.workflow)
       .catch(async (e) => {
         if (e instanceof Response) {
           this.onFailedFn?.(
