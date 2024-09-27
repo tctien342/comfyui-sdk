@@ -307,7 +307,10 @@ export class ComfyApi extends EventTarget {
    * @returns {Promise<QueuePromptResponse>} The response from the API.
    */
   async appendPrompt(workflow: object): Promise<QueuePromptResponse> {
-    return this.queuePrompt(null, workflow);
+    return this.queuePrompt(null, workflow).catch((e) => {
+      this.dispatchEvent(new CustomEvent("queue_error"));
+      throw e;
+    });
   }
 
   /**

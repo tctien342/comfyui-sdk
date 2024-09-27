@@ -299,6 +299,9 @@ export class ComfyPool extends EventTarget {
     client.on("execution_error", (ev) => {
       states.locked = false;
     });
+    client.on("queue_error", (ev) => {
+      states.locked = false;
+    });
     client.on("auth_error", (ev) => {
       this.dispatchEvent(
         new CustomEvent("auth_error", {
