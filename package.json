@@ -4,6 +4,7 @@
   "description": "SDK for ComfyUI",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tctien342/comfyui-sdk.git"
