@@ -42,8 +42,35 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
    * @returns This builder instance.
    */
   setInputNode(input: I, key: DeepKeys<T> | Array<DeepKeys<T>>) {
+    return this.setRawInputNode(input, key);
+  }
+
+  /**
+   * Sets the raw input node for the given input and key. This will bypass the typing check. Use for dynamic nodes.
+   *
+   * @param input - The input node to be set.
+   * @param key - The key associated with the input node.
+   * @returns The current instance for method chaining.
+   */
+  setRawInputNode(input: I, key: string | string[]) {
     this.mapInputKeys[input] = key;
-    return this;
+    return this.clone();
+  }
+
+  /**
+   * Appends raw input node keys to the map of input keys. This will bypass the typing check. Use for dynamic nodes.
+   *
+   * @param input - The input node to which the keys will be appended.
+   * @param key - The key or array of keys to append to the input node.
+   * @returns A clone of the current instance with the updated input keys.
+   */
+  appendRawInputNode(input: I, key: string | string[]) {
+    let keys = typeof key === "string" ? [key] : key;
+    if (typeof this.mapInputKeys[input] === "string") {
+      this.mapInputKeys[input] = [this.mapInputKeys[input] as string];
+    }
+    this.mapInputKeys[input]?.push(...keys);
+    return this.clone();
   }
 
   /**
@@ -54,12 +81,19 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
    * @returns The updated prompt builder.
    */
   appendInputNode(input: I, key: DeepKeys<T> | Array<DeepKeys<T>>) {
-    let keys = typeof key === "string" ? [key] : key;
-    if (typeof this.mapInputKeys[input] === "string") {
-      this.mapInputKeys[input] = [this.mapInputKeys[input] as string];
-    }
-    this.mapInputKeys[input]?.push(...keys);
-    return this;
+    return this.appendRawInputNode(input, key);
+  }
+
+  /**
+   * Sets the output node for a given key. This will bypass the typing check. Use for dynamic nodes.
+   *
+   * @param output - The output node to set.
+   * @param key - The key to associate with the output node.
+   * @returns This builder instance.
+   */
+  setRawOutputNode(output: O, key: string) {
+    this.mapOutputKeys[output] = key;
+    return this.clone();
   }
 
   /**
@@ -70,8 +104,7 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
    * @returns This builder instance.
    */
   setOutputNode(output: O, key: DeepKeys<T>) {
-    this.mapOutputKeys[output] = key;
-    return this;
+    return this.setRawOutputNode(output, key);
   }
 
   /**
