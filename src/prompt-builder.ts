@@ -152,14 +152,14 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
         current[keys[keys.length - 1]] = valueToSet;
       }
     }
-    return newBuilder as Simplify<typeof this>;
+    return newBuilder as Simplify<PromptBuilder<I, O, T>>;
   }
 
   /**
    * Sets the value for a any input key in the prompt builder.
    *
    * @template V - The type of the value being set.
-   * @param {I} key - The input key.
+   * @param {string} key - The input key.
    * @param {V} value - The value to set.
    * @param {OSType} [encodeOs] - The OS type to encode the path.
    * @returns A new prompt builder with the updated value.
@@ -192,7 +192,7 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
       }
       current[keys[keys.length - 1]] = valueToSet;
     }
-    return newBuilder as Simplify<typeof this>;
+    return newBuilder as Simplify<PromptBuilder<I, O, T>>;
   }
 
   /**
