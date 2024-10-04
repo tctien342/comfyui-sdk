@@ -145,7 +145,7 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
         let current = newBuilder.prompt as any;
         for (let i = 0; i < keys.length - 1; i++) {
           if (!current[keys[i]]) {
-            throw new Error(`Key ${keys[i]} not found`);
+            current[keys[i]] = {}; // Alow to set value to undefined path
           }
           current = current[keys[i]];
         }
