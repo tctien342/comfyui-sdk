@@ -156,6 +156,46 @@ export class PromptBuilder<I extends string, O extends string, T = unknown> {
   }
 
   /**
+   * Sets the value for a any input key in the prompt builder.
+   *
+   * @template V - The type of the value being set.
+   * @param {I} key - The input key.
+   * @param {V} value - The value to set.
+   * @param {OSType} [encodeOs] - The OS type to encode the path.
+   * @returns A new prompt builder with the updated value.
+   * @throws {Error} - If the key is not found.
+   */
+  inputRaw<V = string | number | undefined>(
+    key: string,
+    value: V,
+    encodeOs?: OSType
+  ) {
+    const newBuilder = this.clone();
+    if (value !== undefined) {
+      let valueToSet = value;
+      /**
+       * Handle encode path if needed, use for load models path
+       */
+      if (encodeOs === OSType.NT && typeof valueToSet === "string") {
+        valueToSet = encodeNTPath(valueToSet) as typeof valueToSet;
+      } else if (encodeOs === OSType.POSIX && typeof valueToSet === "string") {
+        valueToSet = encodePosixPath(valueToSet) as typeof valueToSet;
+      }
+
+      const keys = key.split(".");
+      let current = newBuilder.prompt as any;
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {}; // Alow to set value to undefined path
+        }
+        current = current[keys[i]];
+      }
+      current[keys[keys.length - 1]] = valueToSet;
+    }
+    return newBuilder as Simplify<typeof this>;
+  }
+
+  /**
    * @deprecated Please call `input` directly instead
    */
   get caller() {
