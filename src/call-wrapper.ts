@@ -37,6 +37,7 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   private previewHandlerOffFn: any;
   private executionHandlerOffFn: any;
   private errorHandlerOffFn: any;
+  private executionEndSuccessOffFn: any;
 
   /**
    * Constructs a new CallWrapper instance.
@@ -186,6 +187,7 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
      */
     const job = await this.enqueueJob();
     if (!job) {
+      this.onFailedFn?.(new Error("Failed to queue prompt"));
       return false;
     }
 
@@ -204,10 +206,16 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
     while (cached === null) {
       await delay(100);
     }
-
-    if (cached && loadedPromptId === job.prompt_id) {
+    if (loadedPromptId === job.prompt_id) {
       const output = await this.handleCachedOutput(job.prompt_id);
       if (output) return output;
+      if (output === false) {
+        this.onFailedFn?.(
+          new Error("Failed to get cached output"),
+          this.promptId
+        );
+        return false;
+      }
     }
 
     return this.handleJobExecution(job.prompt_id);
@@ -240,14 +248,18 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
 
   private async handleCachedOutput(
     promptId: string
-  ): Promise<Record<keyof T["mapOutputKeys"], any> | false> {
+  ): Promise<Record<keyof T["mapOutputKeys"], any> | false | null> {
     const hisData = await this.client.getHistory(promptId);
     if (hisData?.status?.completed) {
       const output = this.mapOutput(hisData.outputs);
-      this.onFinishedFn?.(output, this.promptId);
-      return output;
+      if (Object.values(output).some((v) => v !== undefined)) {
+        this.onFinishedFn?.(output, this.promptId);
+        return output;
+      } else {
+        return false;
+      }
     }
-    return false;
+    return null;
   }
 
   private mapOutput(outputNodes: any): Record<keyof T["mapOutputKeys"], any> {
@@ -301,6 +313,18 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
           }
         };
 
+        const executedEnd = (ev: CustomEvent) => {
+          if (totalOutput !== 0) {
+            this.onFailedFn?.(new Error("Execution failed"), this.promptId);
+            this.cleanupListeners();
+            resolve(false);
+          }
+        };
+
+        this.executionEndSuccessOffFn = this.client.on(
+          "execution_success",
+          executedEnd
+        );
         this.executionHandlerOffFn = this.client.on(
           "executed",
           executionHandler
@@ -334,11 +358,11 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
     resolve: (value: Record<keyof T["mapOutputKeys"], any> | false) => void
   ) {
     if (ev.detail.prompt_id !== promptId) return;
-    this.cleanupListeners();
     this.onFailedFn?.(
       new Error(ev.detail.exception_type, { cause: ev.detail }),
       this.promptId
     );
+    this.cleanupListeners();
     resolve(false);
   }
 
@@ -350,5 +374,6 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
     this.previewHandlerOffFn();
     this.executionHandlerOffFn();
     this.errorHandlerOffFn();
+    this.executionEndSuccessOffFn();
   }
 }

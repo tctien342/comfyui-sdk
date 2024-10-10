@@ -298,6 +298,15 @@ export class ComfyPool extends EventTarget {
     });
     client.on("execution_error", (ev) => {
       states.locked = false;
+      this.dispatchEvent(
+        new CustomEvent("execution_error", {
+          detail: {
+            client,
+            clientIdx: index,
+            error: new Error(ev.detail.exception_type, { cause: ev.detail }),
+          },
+        })
+      );
     });
     client.on("queue_error", (ev) => {
       states.locked = false;
