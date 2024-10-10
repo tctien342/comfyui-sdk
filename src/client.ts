@@ -929,7 +929,7 @@ export class ComfyApi extends EventTarget {
                 case 2:
                   imageMime = "image/png";
               }
-              const imageBlob = new Blob([buffer.slice(4)], {
+              const imageBlob = new Blob([buffer.slice(8)], {
                 type: imageMime,
               });
               this.dispatchEvent(
