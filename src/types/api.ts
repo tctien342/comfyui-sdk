@@ -19,6 +19,11 @@ export interface BasicCredentials {
   password: string;
 }
 
+export interface BearerTokenCredentials {
+  type: "bearer_token";
+  token: string;
+}
+
 export interface HistoryResponse {
   [key: string]: HistoryEntry;
 }

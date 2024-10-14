@@ -2,6 +2,7 @@ import { WebSocketClient } from "./socket";
 
 import {
   BasicCredentials,
+  BearerTokenCredentials,
   HistoryEntry,
   HistoryResponse,
   ImageInfo,
@@ -42,7 +43,7 @@ export class ComfyApi extends EventTarget {
     options?: AddEventListenerOptions | boolean;
     handler: (event: TComfyAPIEventMap[keyof TComfyAPIEventMap]) => void;
   }[] = [];
-  private credentials: BasicCredentials | null = null;
+  private credentials: BasicCredentials | BearerTokenCredentials | null = null;
 
   public ext = {
     /**
@@ -130,7 +131,7 @@ export class ComfyApi extends EventTarget {
        * This will retry to connect to WebSocket on error.
        */
       forceWs?: boolean;
-      credentials?: BasicCredentials;
+      credentials?: BasicCredentials | BearerTokenCredentials;
     }
   ) {
     super();
@@ -173,6 +174,10 @@ export class ComfyApi extends EventTarget {
           Authorization: `Basic ${btoa(
             `${this.credentials.username}:${this.credentials.password}`
           )}`,
+        };
+      case "bearer_token":
+        return {
+          Authorization: `Bearer ${this.credentials.token}`,
         };
       default:
         return {};
