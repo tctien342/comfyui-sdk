@@ -13,15 +13,28 @@ const start = Date.now();
 
 console.log("JSCompiling", "Building...");
 
-await Bun.build({
-  entrypoints: ["./index.ts"],
-  external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
-  format: "esm",
-  minify: true,
-  outdir: "./build",
-  sourcemap: "external",
-  target: "browser",
-});
+await Promise.all([
+  Bun.build({
+    entrypoints: ["./index.ts"],
+    external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
+    format: "esm",
+    minify: true,
+    outdir: "./build",
+    naming: "index.esm.js",
+    sourcemap: "external",
+    target: "browser",
+  }),
+  Bun.build({
+    entrypoints: ["./index.ts"],
+    external: Object.keys(dependencies).concat(Object.keys(peerDependencies)),
+    format: "cjs",
+    minify: true,
+    outdir: "./build",
+    naming: "index.cjs.js",
+    sourcemap: "external",
+    target: "node",
+  }),
+]);
 console.log("JSCompiling", "Done!");
 
 console.log("TypeCompiling", "Building...");
