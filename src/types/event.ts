@@ -41,6 +41,12 @@ export type TExecutionError = TExecution & {
   traceback: string[];
 };
 
+export type TExecutionInterrupted = TExecution & {
+  node_id: string;
+  node_type: string;
+  executed: string[],
+};
+
 export type TEventKey =
   | "all"
   | "auth_error"
@@ -81,6 +87,7 @@ export type TComfyAPIEventMap = {
   executed: CustomEvent<TExecuted>;
   queue_error: CustomEvent<Error>;
   execution_error: CustomEvent<TExecutionError>;
+  execution_interrupted: CustomEvent<TExecutionInterrupted>;
   execution_cached: CustomEvent<TExecutionCached>;
 };
 
