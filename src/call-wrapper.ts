@@ -1,8 +1,16 @@
 import { NodeProgress } from "./types/api";
 import { ComfyApi } from "./client";
 import { PromptBuilder } from "./prompt-builder";
-import { delay } from "./tools";
 import { TExecutionCached } from "./types/event";
+import {
+  FailedCacheError,
+  WentMissingError,
+  EnqueueFailedError,
+  DisconnectedError,
+  CustomEventError,
+  ExecutionFailedError,
+  ExecutionInterruptedError,
+} from "./types/error";
 
 /**
  * Represents a wrapper class for making API calls using the ComfyApi client.
@@ -38,6 +46,8 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   private executionHandlerOffFn: any;
   private errorHandlerOffFn: any;
   private executionEndSuccessOffFn: any;
+  private statusHandlerOffFn: any;
+  private interruptionHandlerOffFn: any;
 
   /**
    * Constructs a new CallWrapper instance.
@@ -146,16 +156,33 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   async run(): Promise<
     Record<keyof T["mapOutputKeys"], any> | undefined | false
   > {
-    let loadedPromptId: string | null = null;
-    let cached: boolean | null = null;
+    /**
+     * Start the job execution.
+     */
+    const job = await this.enqueueJob();
+    if (!job) {
+      this.onFailedFn?.(new Error("Failed to queue prompt"));
+      return false;
+    }
+
+    let promptLoadTrigger!: (value: boolean) => void;
+    const promptLoadCached: Promise<boolean> = new Promise(resolve => {
+      promptLoadTrigger = resolve;
+    })
+
+    let jobDoneTrigger!: (value: Record<keyof T["mapOutputKeys"], any> | false) => void;
+    const jobDonePromise: Promise<Record<keyof T["mapOutputKeys"], any> | false> = new Promise(
+      (resolve) => {
+        jobDoneTrigger = resolve;
+      }
+    )
 
     /**
      * Declare the function to check if the job is executing.
      */
     const checkExecutingFn = (event: CustomEvent) => {
-      if (event.detail && cached === null && loadedPromptId === null) {
-        cached = false;
-        loadedPromptId = event.detail.prompt_id;
+      if (event.detail && event.detail.prompt_id === job.prompt_id) {
+        promptLoadTrigger(false);
       }
     };
     /**
@@ -165,12 +192,12 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
       const outputNodes = Object.values(this.prompt.mapOutputKeys).filter(
         (n) => !!n
       ) as string[];
-      if (event.detail.nodes.length > 0 && loadedPromptId === null) {
+      if (event.detail.nodes.length > 0 && event.detail.prompt_id === job.prompt_id) {
         /**
          * Cached is true if all output nodes are included in the cached nodes.
          */
-        cached = outputNodes.every((node) => event.detail.nodes.includes(node));
-        loadedPromptId = event.detail.prompt_id;
+        const cached = outputNodes.every((node) => event.detail.nodes.includes(node));
+        promptLoadTrigger(cached);
       }
     };
     /**
@@ -182,43 +209,78 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
       checkExecutionCachedFn
     );
 
-    /**
-     * Start the job execution.
-     */
-    const job = await this.enqueueJob();
-    if (!job) {
-      this.onFailedFn?.(new Error("Failed to queue prompt"));
+    // race condition handling
+    let wentMissing = false;
+    let cachedOutputDone = false;
+    let cachedOutputPromise: Promise<false | Record<keyof T["mapOutputKeys"], any> | null> = Promise.resolve(null);
+
+    const statusHandler = async () => {
+      const queue = await this.client.getQueue();
+      const queueItems = [...queue.queue_pending, ...queue.queue_running];
+      for (const queueItem of queueItems) {
+        if (queueItem[1] === job.prompt_id) {
+          return;
+        }
+      }
+
+      await cachedOutputPromise;
+      if (cachedOutputDone) {
+        return;
+      }
+
+      const output = await this.handleCachedOutput(job.prompt_id);
+
+      wentMissing = true;
+
+      if (output) {
+        jobDoneTrigger(output);
+        this.cleanupListeners();
+        return;
+      }
+
+      promptLoadTrigger(false);
+      jobDoneTrigger(false);
+      this.cleanupListeners();
+      this.onFailedFn?.(
+        new WentMissingError('The job went missing!'),
+        job.prompt_id
+      );
+    }
+
+    this.statusHandlerOffFn = this.client.on(
+      "status",
+      statusHandler
+    );
+
+    await promptLoadCached;
+
+    if (wentMissing) {
+      return jobDonePromise;
+    }
+
+    cachedOutputPromise = this.handleCachedOutput(job.prompt_id);
+    const output = await cachedOutputPromise;
+
+    if (output) {
+      cachedOutputDone = true;
+      this.cleanupListeners();
+      jobDoneTrigger(output);
+      return output;
+    }
+    if (output === false) {
+      cachedOutputDone = true;
+      this.cleanupListeners();
+      this.onFailedFn?.(
+        new FailedCacheError("Failed to get cached output"),
+        this.promptId
+      );
+      jobDoneTrigger(false);
       return false;
     }
 
-    /**
-     * Wait for the job to be loaded.
-     */
-    while (loadedPromptId !== job.prompt_id) {
-      cached = null;
-      loadedPromptId = null;
-      await delay(100);
-    }
+    this.handleJobExecution(job.prompt_id, jobDoneTrigger);
 
-    /**
-     * Wait for checking the job cached.
-     */
-    while (cached === null) {
-      await delay(100);
-    }
-    if (loadedPromptId === job.prompt_id) {
-      const output = await this.handleCachedOutput(job.prompt_id);
-      if (output) return output;
-      if (output === false) {
-        this.onFailedFn?.(
-          new Error("Failed to get cached output"),
-          this.promptId
-        );
-        return false;
-      }
-    }
-
-    return this.handleJobExecution(job.prompt_id);
+    return jobDonePromise;
   }
 
   private async enqueueJob() {
@@ -227,10 +289,10 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
       .catch(async (e) => {
         if (e instanceof Response) {
           this.onFailedFn?.(
-            new Error("Failed to queue prompt", { cause: await e.json() })
+            new EnqueueFailedError("Failed to queue prompt", { cause: await e.json() })
           );
         } else {
-          this.onFailedFn?.(new Error("Failed to queue prompt", { cause: e }));
+          this.onFailedFn?.(new EnqueueFailedError("Failed to queue prompt", { cause: e }));
         }
         return null;
       });
@@ -241,7 +303,7 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
     this.promptId = job.prompt_id;
     this.onPendingFn?.(this.promptId);
     this.onDisconnectedHandlerOffFn = this.client.on("disconnected", () =>
-      this.onFailedFn?.(new Error("Disconnected"), this.promptId)
+      this.onFailedFn?.(new DisconnectedError('Disconnected'), this.promptId)
     );
     return job;
   }
@@ -277,8 +339,9 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   }
 
   private handleJobExecution(
-    promptId: string
-  ): Promise<Record<keyof T["mapOutputKeys"], any> | false> {
+    promptId: string,
+    jobDoneTrigger: (value: Record<keyof T["mapOutputKeys"], any> | false) => void
+  ): void {
     const reverseOutputMapped = this.reverseMapOutputKeys();
 
     this.progressHandlerOffFn = this.client.on("progress", (ev) =>
@@ -288,52 +351,57 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
       this.onPreviewFn?.(ev.detail, this.promptId)
     );
 
-    return new Promise<Record<keyof T["mapOutputKeys"], any> | false>(
-      (resolve) => {
-        let totalOutput = Object.keys(reverseOutputMapped).length;
+    let totalOutput = Object.keys(reverseOutputMapped).length;
 
-        const executionHandler = (ev: CustomEvent) => {
-          if (ev.detail.prompt_id !== promptId) return;
+    const executionHandler = (ev: CustomEvent) => {
+      if (ev.detail.prompt_id !== promptId) return;
 
-          const outputKey =
-            reverseOutputMapped[
-              ev.detail.node as keyof typeof this.prompt.mapOutputKeys
-            ];
-          if (outputKey) {
-            this.output[outputKey as keyof T["mapOutputKeys"]] =
-              ev.detail.output;
-            this.onOutputFn?.(outputKey, ev.detail.output, this.promptId);
-            totalOutput--;
-          }
+    const outputKey =
+      reverseOutputMapped[
+        ev.detail.node as keyof typeof this.prompt.mapOutputKeys
+      ];
+    if (outputKey) {
+      this.output[outputKey as keyof T["mapOutputKeys"]] =
+        ev.detail.output;
+      this.onOutputFn?.(outputKey, ev.detail.output, this.promptId);
+      totalOutput--;
+    }
 
-          if (totalOutput === 0) {
-            this.cleanupListeners();
-            this.onFinishedFn?.(this.output, this.promptId);
-            resolve(this.output);
-          }
-        };
-
-        const executedEnd = (ev: CustomEvent) => {
-          if (totalOutput !== 0) {
-            this.onFailedFn?.(new Error("Execution failed"), this.promptId);
-            this.cleanupListeners();
-            resolve(false);
-          }
-        };
-
-        this.executionEndSuccessOffFn = this.client.on(
-          "execution_success",
-          executedEnd
-        );
-        this.executionHandlerOffFn = this.client.on(
-          "executed",
-          executionHandler
-        );
-        this.errorHandlerOffFn = this.client.on("execution_error", (ev) =>
-          this.handleError(ev, promptId, resolve)
-        );
+      if (totalOutput === 0) {
+        this.cleanupListeners();
+        this.onFinishedFn?.(this.output, this.promptId);
+        jobDoneTrigger(this.output);
       }
+    };
+
+    const executedEnd = () => {
+      if (totalOutput !== 0) {
+        this.onFailedFn?.(new ExecutionFailedError("Execution failed"), this.promptId);
+        this.cleanupListeners();
+        jobDoneTrigger(false);
+      }
+    };
+
+    this.executionEndSuccessOffFn = this.client.on(
+      "execution_success",
+      executedEnd
     );
+    this.executionHandlerOffFn = this.client.on(
+      "executed",
+      executionHandler
+    );
+    this.errorHandlerOffFn = this.client.on("execution_error", (ev) =>
+      this.handleError(ev, promptId, jobDoneTrigger)
+    );
+    this.interruptionHandlerOffFn = this.client.on("execution_interrupted", (ev) => {
+      if (ev.detail.prompt_id !== promptId) return;
+      this.onFailedFn?.(
+        new ExecutionInterruptedError('The execution was interrupted!', { cause: ev.detail }),
+        ev.detail.prompt_id
+      );
+      this.cleanupListeners();
+      jobDoneTrigger(false);
+    });
   }
 
   private reverseMapOutputKeys(): Record<string, string> {
@@ -359,21 +427,23 @@ export class CallWrapper<T extends PromptBuilder<string, string, object>> {
   ) {
     if (ev.detail.prompt_id !== promptId) return;
     this.onFailedFn?.(
-      new Error(ev.detail.exception_type, { cause: ev.detail }),
-      this.promptId
+      new CustomEventError(ev.detail.exception_type, { cause: ev.detail }),
+      ev.detail.prompt_id
     );
     this.cleanupListeners();
     resolve(false);
   }
 
   private cleanupListeners() {
-    this.onDisconnectedHandlerOffFn();
-    this.checkExecutingOffFn();
-    this.checkExecutedOffFn();
-    this.progressHandlerOffFn();
-    this.previewHandlerOffFn();
-    this.executionHandlerOffFn();
-    this.errorHandlerOffFn();
-    this.executionEndSuccessOffFn();
+    this.onDisconnectedHandlerOffFn?.();
+    this.checkExecutingOffFn?.();
+    this.checkExecutedOffFn?.();
+    this.progressHandlerOffFn?.();
+    this.previewHandlerOffFn?.();
+    this.executionHandlerOffFn?.();
+    this.errorHandlerOffFn?.();
+    this.executionEndSuccessOffFn?.();
+    this.interruptionHandlerOffFn?.();
+    this.statusHandlerOffFn?.();
   }
 }
