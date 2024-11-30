@@ -123,21 +123,12 @@ export interface NodeDef {
         | TBoolInput
         | TNumberInput;
     };
-    optional?: {
-      [key: string]:
-        | [string[], { tooltip?: string }]
-        | [string, { tooltip?: string }]
-        | TStringInput
-        | TBoolInput
-        | TNumberInput;
-    };
     hidden: {
       [key: string]: string;
     };
   };
   input_order: {
     required: string[];
-    optional?: string[],
     hidden: string[];
   };
   output: string[];

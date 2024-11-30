@@ -27,9 +27,5 @@ export class CustomEventError extends CallWrapperError {
 }
 
 export class ExecutionInterruptedError extends CallWrapperError {
-  name = 'ExecutionInterruptedError';
-}
-
-export class MissingNodeError extends CallWrapperError {
-  name = 'MissingNodeError';
+  name = ' ExecutionInterruptedError';
 }

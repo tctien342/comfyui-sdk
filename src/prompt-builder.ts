@@ -1,15 +1,14 @@
 import { encodeNTPath, encodePosixPath } from "./tools";
-import { NodeData, OSType } from "./types/api";
+import { OSType } from "./types/api";
 import { DeepKeys, Simplify } from "./types/tool";
 
-export class PromptBuilder<I extends string, O extends string, T extends NodeData> {
+export class PromptBuilder<I extends string, O extends string, T = unknown> {
   prompt: T;
   mapInputKeys: Partial<Record<I, string | string[]>> = {};
   mapOutputKeys: Partial<Record<O, string>> = {};
-  bypassNodes: (keyof T)[] = [];
 
   constructor(prompt: T, inputKeys: I[], outputKeys: O[]) {
-    this.prompt = structuredClone(prompt);
+    this.prompt = prompt;
     inputKeys.forEach((key) => {
       this.mapInputKeys[key] = undefined;
     });
@@ -32,57 +31,6 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
     );
     newBuilder.mapInputKeys = { ...this.mapInputKeys };
     newBuilder.mapOutputKeys = { ...this.mapOutputKeys };
-    newBuilder.bypassNodes = [ ...this.bypassNodes ];
-    return newBuilder;
-  }
-
-
-  /**
-   * Marks a node to be bypassed at generation.
-   *
-   * @param node Node which will be bypassed.
-   */
-  bypass(node: keyof T): PromptBuilder<I, O, T>;
-
-  /**
-   * Marks multiple nodes to be bypassed at generation.
-   *
-   * @param nodes Array of nodes which will be bypassed.
-   */
-  bypass(nodes: (keyof T)[]): PromptBuilder<I, O, T>;
-
-  bypass(nodes: keyof T | (keyof T)[]) {
-    if (!Array.isArray(nodes)) {
-      nodes = [nodes];
-    }
-    const newBuilder = this.clone();
-    newBuilder.bypassNodes.push(...nodes);
-    return newBuilder;
-  }
-
-  /**
-   * Unmarks a node from bypass at generation.
-   *
-   * @param node Node to reverse bypass on.
-   */
-  reinstate(node: keyof T): PromptBuilder<I, O, T>;
-
-  /**
-   * Unmarks a collection of nodes from bypass at generation.
-   *
-   * @param nodes Array of nodes to reverse bypass on.
-   */
-  reinstate(nodes: (keyof T)[]): PromptBuilder<I, O, T>;
-
-  reinstate(nodes: keyof T | (keyof T)[]) {
-    if (!Array.isArray(nodes)) {
-      nodes = [nodes];
-    }
-
-    const newBuilder = this.clone();
-    for (const node of nodes) {
-      newBuilder.bypassNodes.splice(newBuilder.bypassNodes.indexOf(node), 1);
-    }
     return newBuilder;
   }
 
