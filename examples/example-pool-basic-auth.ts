@@ -7,6 +7,9 @@ import { seed } from "../src/tools";
 import { BasicCredentials } from "../src/types/api";
 import { TSamplerName, TSchedulerName } from "../src/types/sampler";
 
+/**
+ * Using with NginX basic auth
+ */
 const credentials: BasicCredentials = {
   type: "basic",
   username: "username",

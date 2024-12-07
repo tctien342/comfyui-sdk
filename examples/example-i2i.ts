@@ -46,12 +46,16 @@ export const Img2ImgPrompt = new PromptBuilder(
 const api = new ComfyApi("http://localhost:8189").init();
 
 /**
- * Upload the source image to the server
+ * Prepare the image to be uploaded
  */
 const exampleTomImg =
   "https://www.redwolf.in/image/cache/catalog/stickers/tom-face-sticker-india-600x800.jpg";
 const downloadImg = await fetch(exampleTomImg);
 const imgBlob = await downloadImg.blob();
+
+/**
+ * Upload the source image to ComfyUI server
+ */
 const uploadedImg = await api.uploadImage(
   imgBlob,
   "tom-face-sticker-india.jpg"

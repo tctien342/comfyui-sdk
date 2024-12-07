@@ -2,7 +2,11 @@ import { encodeNTPath, encodePosixPath } from "./tools";
 import { NodeData, OSType } from "./types/api";
 import { DeepKeys, Simplify } from "./types/tool";
 
-export class PromptBuilder<I extends string, O extends string, T extends NodeData> {
+export class PromptBuilder<
+  I extends string,
+  O extends string,
+  T extends NodeData
+> {
   prompt: T;
   mapInputKeys: Partial<Record<I, string | string[]>> = {};
   mapOutputKeys: Partial<Record<O, string>> = {};
@@ -32,10 +36,9 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
     );
     newBuilder.mapInputKeys = { ...this.mapInputKeys };
     newBuilder.mapOutputKeys = { ...this.mapOutputKeys };
-    newBuilder.bypassNodes = [ ...this.bypassNodes ];
+    newBuilder.bypassNodes = [...this.bypassNodes];
     return newBuilder;
   }
-
 
   /**
    * Marks a node to be bypassed at generation.
@@ -170,7 +173,6 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
    * @throws {Error} - If the key is not found.
    */
   input<V = string | number | undefined>(key: I, value: V, encodeOs?: OSType) {
-    const newBuilder = this.clone();
     if (value !== undefined) {
       let valueToSet = value;
       /**
@@ -185,7 +187,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
       /**
        * Map the input key to the path in the prompt object
        */
-      let paths = newBuilder.mapInputKeys[key];
+      let paths = this.mapInputKeys[key];
       if (!paths) {
         throw new Error(`Key ${key} not found`);
       }
@@ -194,7 +196,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
       }
       for (const path of paths as string[]) {
         const keys = path.split(".");
-        let current = newBuilder.prompt as any;
+        let current = this.prompt as any;
         for (let i = 0; i < keys.length - 1; i++) {
           if (!current[keys[i]]) {
             current[keys[i]] = {}; // Alow to set value to undefined path
@@ -204,7 +206,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
         current[keys[keys.length - 1]] = valueToSet;
       }
     }
-    return newBuilder as Simplify<PromptBuilder<I, O, T>>;
+    return this as Simplify<PromptBuilder<I, O, T>>;
   }
 
   /**
@@ -222,7 +224,6 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
     value: V,
     encodeOs?: OSType
   ) {
-    const newBuilder = this.clone();
     if (value !== undefined) {
       let valueToSet = value;
       /**
@@ -235,7 +236,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
       }
 
       const keys = key.split(".");
-      let current = newBuilder.prompt as any;
+      let current = this.prompt as any;
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) {
           current[keys[i]] = {}; // Alow to set value to undefined path
@@ -244,7 +245,7 @@ export class PromptBuilder<I extends string, O extends string, T extends NodeDat
       }
       current[keys[keys.length - 1]] = valueToSet;
     }
-    return newBuilder as Simplify<PromptBuilder<I, O, T>>;
+    return this as Simplify<PromptBuilder<I, O, T>>;
   }
 
   /**

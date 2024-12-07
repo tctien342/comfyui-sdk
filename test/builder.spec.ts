@@ -30,10 +30,14 @@ describe("PromptBuilder with complex input", () => {
     promptBuilder.setInputNode("size", "5.inputs.width");
     promptBuilder.appendInputNode("size", "5.inputs.height");
 
-    const newPromptBuilder = promptBuilder.input("size", 1600);
+    const newPromptBuilder = promptBuilder
+      .input("size", 1600) // Self update
+      .clone()
+      .input("size", 1500); // New instance update
 
-    expect(newPromptBuilder.prompt["5"].inputs.width).toBe(1600);
-    expect(newPromptBuilder.prompt["5"].inputs.height).toBe(1600);
+    expect(promptBuilder.prompt["5"].inputs.width).toBe(1600);
+    expect(newPromptBuilder.prompt["5"].inputs.width).toBe(1500);
+    expect(newPromptBuilder.prompt["5"].inputs.height).toBe(1500);
   });
 
   it("should have correct initial values for complex input structure", () => {

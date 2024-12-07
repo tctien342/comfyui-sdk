@@ -67,7 +67,7 @@ const workflow = Txt2ImgPrompt.input(
 /**
  * Execute the workflow
  */
-new CallWrapper<typeof workflow>(api, workflow)
+new CallWrapper(api, workflow)
   .onPending(() => console.log("Task is pending"))
   .onStart(() => console.log("Task is started"))
   .onPreview((blob) => console.log(blob))
