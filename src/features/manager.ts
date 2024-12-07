@@ -22,7 +22,7 @@ export interface FetchOptions extends RequestInit {
 
 export class ManagerFeature extends AbstractFeature {
   async checkSupported() {
-    const data = await this.defaultUi();
+    const data = await this.defaultUi().catch(() => false);
     if (data !== false) {
       this.supported = true;
     }
