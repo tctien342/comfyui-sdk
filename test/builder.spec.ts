@@ -14,10 +14,7 @@ describe("PromptBuilder with complex input", () => {
     promptBuilder.setInputNode("size", "5.inputs.width");
     promptBuilder.appendInputNode("size", "5.inputs.height");
 
-    expect(promptBuilder.mapInputKeys["size"]).toEqual([
-      "5.inputs.width",
-      "5.inputs.height",
-    ]);
+    expect(promptBuilder.mapInputKeys["size"]).toEqual(["5.inputs.width", "5.inputs.height"]);
   });
 
   it("should set output nodes correctly", () => {
@@ -42,18 +39,12 @@ describe("PromptBuilder with complex input", () => {
 
   it("should have correct initial values for complex input structure", () => {
     expect(promptBuilder.prompt["3"].inputs.seed).toBe(509648683700218);
-    expect(promptBuilder.prompt["4"].inputs.ckpt_name).toBe(
-      "SDXL/dreamshaperXL_v2TurboDpmppSDE.safetensors"
-    );
-    expect(promptBuilder.prompt["6"].inputs.text).toBe(
-      "beautiful scenery nature glass bottle landscape"
-    );
+    expect(promptBuilder.prompt["4"].inputs.ckpt_name).toBe("SDXL/dreamshaperXL_v2TurboDpmppSDE.safetensors");
+    expect(promptBuilder.prompt["6"].inputs.text).toBe("beautiful scenery nature glass bottle landscape");
     expect(promptBuilder.prompt["7"].inputs.text).toBe("text, watermark");
     expect(promptBuilder.prompt["8"].inputs.samples).toEqual(["3", 0]);
     expect(promptBuilder.prompt["9"].inputs.filename_prefix).toBe("ComfyUI");
-    expect(promptBuilder.prompt["10"].inputs.model_name).toBe(
-      "4x-ClearRealityV1.pth"
-    );
+    expect(promptBuilder.prompt["10"].inputs.model_name).toBe("4x-ClearRealityV1.pth");
     expect(promptBuilder.prompt["11"].inputs.upscale_model).toEqual(["10", 0]);
     expect(promptBuilder.prompt["12"].inputs.filename_prefix).toBe("ComfyUI");
   });

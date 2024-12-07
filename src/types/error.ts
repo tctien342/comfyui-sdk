@@ -1,35 +1,35 @@
 export class CallWrapperError extends Error {
-  name = 'CallWrapperError';
+  name = "CallWrapperError";
 }
 
 export class WentMissingError extends CallWrapperError {
-  name = 'WentMissingError';
+  name = "WentMissingError";
 }
 
 export class FailedCacheError extends CallWrapperError {
-  name = 'FailedCacheError';
+  name = "FailedCacheError";
 }
 
 export class EnqueueFailedError extends CallWrapperError {
-  name = 'EnqueueFailedError';
+  name = "EnqueueFailedError";
 }
 
 export class DisconnectedError extends CallWrapperError {
-  name = 'DisconnectedError';
+  name = "DisconnectedError";
 }
 
 export class ExecutionFailedError extends CallWrapperError {
-  name = 'ExecutionFailedError';
+  name = "ExecutionFailedError";
 }
 
 export class CustomEventError extends CallWrapperError {
-  name = 'CustomEventError';
+  name = "CustomEventError";
 }
 
 export class ExecutionInterruptedError extends CallWrapperError {
-  name = 'ExecutionInterruptedError';
+  name = "ExecutionInterruptedError";
 }
 
 export class MissingNodeError extends CallWrapperError {
-  name = 'MissingNodeError';
+  name = "MissingNodeError";
 }

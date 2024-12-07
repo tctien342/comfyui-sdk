@@ -22,7 +22,7 @@ await Promise.all([
     outdir: "./build",
     naming: "index.esm.js",
     sourcemap: "external",
-    target: "browser",
+    target: "browser"
   }),
   Bun.build({
     entrypoints: ["./index.ts"],
@@ -32,16 +32,16 @@ await Promise.all([
     outdir: "./build",
     naming: "index.cjs.js",
     sourcemap: "external",
-    target: "node",
-  }),
+    target: "node"
+  })
 ]);
 console.log("JSCompiling", "Done!");
 
 console.log("TypeCompiling", "Building...");
 const typedContent = generateDtsBundle([
   {
-    filePath: "./index.ts",
-  },
+    filePath: "./index.ts"
+  }
 ]);
 
 // Write typed content to index.d.ts

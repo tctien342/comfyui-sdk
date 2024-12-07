@@ -7,22 +7,10 @@
       "sampler_name": "dpmpp_sde",
       "scheduler": "sgm_uniform",
       "denoise": 1,
-      "model": [
-        "4",
-        0
-      ],
-      "positive": [
-        "6",
-        0
-      ],
-      "negative": [
-        "7",
-        0
-      ],
-      "latent_image": [
-        "5",
-        0
-      ]
+      "model": ["4", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["5", 0]
     },
     "class_type": "KSampler",
     "_meta": {
@@ -52,10 +40,7 @@
   "6": {
     "inputs": {
       "text": "beautiful scenery nature glass bottle landscape",
-      "clip": [
-        "4",
-        1
-      ]
+      "clip": ["4", 1]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -65,10 +50,7 @@
   "7": {
     "inputs": {
       "text": "text, watermark",
-      "clip": [
-        "4",
-        1
-      ]
+      "clip": ["4", 1]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -77,14 +59,8 @@
   },
   "8": {
     "inputs": {
-      "samples": [
-        "3",
-        0
-      ],
-      "vae": [
-        "4",
-        2
-      ]
+      "samples": ["3", 0],
+      "vae": ["4", 2]
     },
     "class_type": "VAEDecode",
     "_meta": {
@@ -94,10 +70,7 @@
   "9": {
     "inputs": {
       "filename_prefix": "ComfyUI",
-      "images": [
-        "8",
-        0
-      ]
+      "images": ["8", 0]
     },
     "class_type": "SaveImage",
     "_meta": {
@@ -115,14 +88,8 @@
   },
   "11": {
     "inputs": {
-      "upscale_model": [
-        "10",
-        0
-      ],
-      "image": [
-        "8",
-        0
-      ]
+      "upscale_model": ["10", 0],
+      "image": ["8", 0]
     },
     "class_type": "ImageUpscaleWithModel",
     "_meta": {
@@ -132,10 +99,7 @@
   "12": {
     "inputs": {
       "filename_prefix": "ComfyUI",
-      "images": [
-        "11",
-        0
-      ]
+      "images": ["11", 0]
     },
     "class_type": "SaveImage",
     "_meta": {

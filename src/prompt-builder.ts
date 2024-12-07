@@ -2,11 +2,7 @@ import { encodeNTPath, encodePosixPath } from "./tools";
 import { NodeData, OSType } from "./types/api";
 import { DeepKeys, Simplify } from "./types/tool";
 
-export class PromptBuilder<
-  I extends string,
-  O extends string,
-  T extends NodeData
-> {
+export class PromptBuilder<I extends string, O extends string, T extends NodeData> {
   prompt: T;
   mapInputKeys: Partial<Record<I, string | string[]>> = {};
   mapOutputKeys: Partial<Record<O, string>> = {};
@@ -219,11 +215,7 @@ export class PromptBuilder<
    * @returns A new prompt builder with the updated value.
    * @throws {Error} - If the key is not found.
    */
-  inputRaw<V = string | number | undefined>(
-    key: string,
-    value: V,
-    encodeOs?: OSType
-  ) {
+  inputRaw<V = string | number | undefined>(key: string, value: V, encodeOs?: OSType) {
     if (value !== undefined) {
       let valueToSet = value;
       /**

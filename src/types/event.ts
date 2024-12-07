@@ -44,7 +44,7 @@ export type TExecutionError = TExecution & {
 export type TExecutionInterrupted = TExecution & {
   node_id: string;
   node_type: string;
-  executed: string[],
+  executed: string[];
 };
 
 export type TEventKey =

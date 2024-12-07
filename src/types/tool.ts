@@ -1,12 +1,8 @@
-export type FixArr<T> = T extends readonly any[]
-  ? Omit<T, Exclude<keyof any[], number>>
-  : T;
+export type FixArr<T> = T extends readonly any[] ? Omit<T, Exclude<keyof any[], number>> : T;
 export type DropInitDot<T> = T extends `.${infer U}` ? U : T;
 export type _DeepKeys<T> = T extends object
   ? {
-      [K in (string | number) & keyof T]: `${`.${K}`}${
-        | ""
-        | _DeepKeys<FixArr<T[K]>>}`;
+      [K in (string | number) & keyof T]: `${`.${K}`}${"" | _DeepKeys<FixArr<T[K]>>}`;
     }[(string | number) & keyof T]
   : never;
 

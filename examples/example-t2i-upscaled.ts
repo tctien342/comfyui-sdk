@@ -10,19 +10,7 @@ import ExampleTxt2ImgWorkflow from "./example-txt2img-upscaled-workflow.json";
  */
 export const Txt2ImgPrompt = new PromptBuilder(
   ExampleTxt2ImgWorkflow,
-  [
-    "positive",
-    "negative",
-    "checkpoint",
-    "seed",
-    "batch",
-    "step",
-    "cfg",
-    "sampler",
-    "sheduler",
-    "width",
-    "height",
-  ],
+  ["positive", "negative", "checkpoint", "seed", "batch", "step", "cfg", "sampler", "sheduler", "width", "height"],
   ["images", "upscaled"]
 )
   .setInputNode("checkpoint", "4.inputs.ckpt_name")
@@ -75,17 +63,13 @@ new CallWrapper(api, workflow)
   /**
    * Preview output of executed node
    */
-  .onOutput((outputName, outputVal) =>
-    console.log(`Output ${outputName} with value`, outputVal)
-  )
+  .onOutput((outputName, outputVal) => console.log(`Output ${outputName} with value`, outputVal))
   .onFinished((data) => {
     console.log("Final output", {
       images: data.images?.images.map((img: any) => api.getPathImage(img)),
-      upscaled: data.upscaled?.images.map((img: any) => api.getPathImage(img)),
+      upscaled: data.upscaled?.images.map((img: any) => api.getPathImage(img))
     });
   })
-  .onProgress((info) =>
-    console.log("Processing node", info.node, `${info.value}/${info.max}`)
-  )
+  .onProgress((info) => console.log("Processing node", info.node, `${info.value}/${info.max}`))
   .onFailed((err) => console.log("Task is failed", err))
   .run();

@@ -1,10 +1,4 @@
-import {
-  randomInt,
-  delay,
-  seed,
-  encodeNTPath,
-  encodePosixPath,
-} from "src/tools";
+import { randomInt, delay, seed, encodeNTPath, encodePosixPath } from "src/tools";
 
 describe("randomInt", () => {
   it("should generate a random integer within the specified range", () => {

@@ -110,12 +110,8 @@ const workflow = promptBuilder
 
 new CallWrapper(api, workflow)
   .onStart((promptId) => console.log(`Task ${promptId} started`))
-  .onProgress((info, promptId) =>
-    console.log(`Task ${promptId} progress:`, info)
-  )
-  .onFinished((data, promptId) =>
-    console.log(`Task ${promptId} finished:`, data)
-  )
+  .onProgress((info, promptId) => console.log(`Task ${promptId} progress:`, info))
+  .onFinished((data, promptId) => console.log(`Task ${promptId} finished:`, data))
   .run();
 ```
 
@@ -179,10 +175,7 @@ if (api.ext.monitor.isSupported) {
 import { ComfyPool, EQueueMode } from "@saintno/comfyui-sdk";
 
 const pool = new ComfyPool(
-  [
-    new ComfyApi("http://localhost:8188", "node-1"),
-    new ComfyApi("http://localhost:8189", "node-2"),
-  ],
+  [new ComfyApi("http://localhost:8188", "node-1"), new ComfyApi("http://localhost:8189", "node-2")],
   //   "PICK_ZERO", Picks the client which has zero queue remaining. This is the default mode. (For who using along with ComfyUI web interface)
   //   "PICK_LOWEST", Picks the client which has the lowest queue remaining.
   //   "PICK_ROUTINE", Picks the client in a round-robin manner.
@@ -196,7 +189,7 @@ pool.run(async (api, clientIdx) => {
 // Or execute multiple jobs in parallel
 pool.batch([
   (api) => executeWorkflow(api, params1),
-  (api) => executeWorkflow(api, params2),
+  (api) => executeWorkflow(api, params2)
   // ...
 ]);
 ```
@@ -208,8 +201,8 @@ const api = new ComfyApi("http://localhost:8188", "client-id", {
   credentials: {
     type: "basic",
     username: "your-username",
-    password: "your-password",
-  },
+    password: "your-password"
+  }
 });
 ```
 

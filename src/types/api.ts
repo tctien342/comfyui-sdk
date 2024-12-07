@@ -10,7 +10,7 @@ export enum OSType {
   /**
    * Java virtual machine
    */
-  JAVA = "java",
+  JAVA = "java"
 }
 
 export interface BasicCredentials {

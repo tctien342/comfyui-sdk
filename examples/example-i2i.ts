@@ -22,7 +22,7 @@ export const Img2ImgPrompt = new PromptBuilder(
     "seed",
     "step",
     "width",
-    "height",
+    "height"
   ],
   ["images"]
 )
@@ -48,18 +48,14 @@ const api = new ComfyApi("http://localhost:8189").init();
 /**
  * Prepare the image to be uploaded
  */
-const exampleTomImg =
-  "https://www.redwolf.in/image/cache/catalog/stickers/tom-face-sticker-india-600x800.jpg";
+const exampleTomImg = "https://www.redwolf.in/image/cache/catalog/stickers/tom-face-sticker-india-600x800.jpg";
 const downloadImg = await fetch(exampleTomImg);
 const imgBlob = await downloadImg.blob();
 
 /**
  * Upload the source image to ComfyUI server
  */
-const uploadedImg = await api.uploadImage(
-  imgBlob,
-  "tom-face-sticker-india.jpg"
-);
+const uploadedImg = await api.uploadImage(imgBlob, "tom-face-sticker-india.jpg");
 if (!uploadedImg) {
   throw new Error("Failed to upload image");
 } else {
@@ -96,8 +92,6 @@ new CallWrapper(api, workflow)
   .onFinished((data) => {
     console.log(data.images?.images.map((img: any) => api.getPathImage(img)));
   })
-  .onProgress((info) =>
-    console.log("Processing node", info.node, `${info.value}/${info.max}`)
-  )
+  .onProgress((info) => console.log("Processing node", info.node, `${info.value}/${info.max}`))
   .onFailed((err) => console.log("Task is failed", err))
   .run();

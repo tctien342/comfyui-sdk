@@ -28,7 +28,7 @@ jobs:
           node-version: 18
           always-auth: true
           registry-url: "https://registry.npmjs.org"
-          scope: '@saintno'
+          scope: "@saintno"
 
       - name: Bump version
         run: npm version patch --no-git-tag-version

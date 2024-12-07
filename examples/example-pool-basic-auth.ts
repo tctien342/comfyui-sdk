@@ -13,7 +13,7 @@ import { TSamplerName, TSchedulerName } from "../src/types/sampler";
 const credentials: BasicCredentials = {
   type: "basic",
   username: "username",
-  password: "password",
+  password: "password"
 };
 
 /**
@@ -34,7 +34,7 @@ export const Txt2ImgPrompt = new PromptBuilder(
     "width",
     "height",
     "sampler",
-    "scheduler",
+    "scheduler"
   ],
   ["images"]
 )
@@ -57,11 +57,11 @@ export const Txt2ImgPrompt = new PromptBuilder(
 const ApiPool = new ComfyPool(
   [
     new ComfyApi("http://localhost:8188", "node-1", {
-      credentials,
+      credentials
     }), // Comfy Instance 1
     new ComfyApi("http://localhost:8189", "node-2", {
-      credentials,
-    }), // Comfy Instance 2
+      credentials
+    }) // Comfy Instance 2
   ],
   //   "PICK_ZERO", Picks the client which has zero queue remaining. This is the default mode. (For who using along with ComfyUI web interface)
   //   "PICK_LOWEST", Picks the client which has the lowest queue remaining.
@@ -69,9 +69,7 @@ const ApiPool = new ComfyPool(
   EQueueMode.PICK_ZERO
 )
   .on("init", () => console.log("Pool in initializing"))
-  .on("loading_client", (ev) =>
-    console.log("Loading client", ev.detail.clientIdx)
-  )
+  .on("loading_client", (ev) => console.log("Loading client", ev.detail.clientIdx))
   .on("add_job", (ev) => console.log("Job added", ev.detail.jobIdx))
   .on("added", (ev) => console.log("Client added", ev.detail.clientIdx))
   .on("auth_success", (ev) => {
@@ -112,33 +110,21 @@ const generateFn = async (api: ComfyApi, clientIdx?: number) => {
       .onPending((promptId) =>
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is pending", {
           clientId: api.id,
-          clientOs: api.osType,
+          clientOs: api.osType
         })
       )
-      .onStart((promptId) =>
-        console.log(`[${clientIdx}]`, `#${promptId}`, "Task is started")
-      )
-      .onPreview((blob, promptId) =>
-        console.log(`[${clientIdx}]`, `#${promptId}`, "Blob size", blob.size)
-      )
+      .onStart((promptId) => console.log(`[${clientIdx}]`, `#${promptId}`, "Task is started"))
+      .onPreview((blob, promptId) => console.log(`[${clientIdx}]`, `#${promptId}`, "Blob size", blob.size))
       .onFinished(async (data, promptId) => {
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is finished");
         /**
          * Use getImage instead of getURL because we use basic auth
          */
-        const url = await Promise.all(
-          data.images?.images.map((img: any) => api.getImage(img))
-        );
+        const url = await Promise.all(data.images?.images.map((img: any) => api.getImage(img)));
         resolve(url as string[]);
       })
       .onProgress((info, promptId) => {
-        console.log(
-          `[${clientIdx}]`,
-          `#${promptId}`,
-          "Processing node",
-          info.node,
-          `${info.value}/${info.max}`
-        );
+        console.log(`[${clientIdx}]`, `#${promptId}`, "Processing node", info.node, `${info.value}/${info.max}`);
       })
       .onFailed((err, promptId) => {
         console.log(`[${clientIdx}]`, `#${promptId}`, "Task is failed", err);

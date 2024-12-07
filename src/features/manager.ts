@@ -10,7 +10,7 @@ import {
   IExtensionUninstallRequest,
   IExtensionUpdateRequest,
   IExtensionActiveRequest,
-  IModelInstallRequest,
+  IModelInstallRequest
 } from "src/types/manager";
 import { AbstractFeature } from "./abstract";
 
@@ -78,7 +78,7 @@ export class ManagerFeature extends AbstractFeature {
           title: nodeData.title,
           author: nodeData.author,
           nickname: nodeData.nickname,
-          description: nodeData.description,
+          description: nodeData.description
         });
       }
       return listNodes;
@@ -116,7 +116,7 @@ export class ManagerFeature extends AbstractFeature {
       }
       return {
         type: EUpdateResult.SUCCESS,
-        data: (await data.json()) as { updated: number; failed: number },
+        data: (await data.json()) as { updated: number; failed: number }
       } as const;
     }
     return { type: EUpdateResult.FAILED };
@@ -160,9 +160,7 @@ export class ManagerFeature extends AbstractFeature {
       }
     | false
   > {
-    const data = await this.fetchApi(
-      `/customnode/getlist?mode=${mode}&skip_update=${skipUpdate}`
-    );
+    const data = await this.fetchApi(`/customnode/getlist?mode=${mode}&skip_update=${skipUpdate}`);
     if (data && data.ok) {
       return data.json();
     }
@@ -213,7 +211,7 @@ export class ManagerFeature extends AbstractFeature {
   async installExtension(config: IInstallExtensionRequest) {
     const data = await this.fetchApi("/customnode/install", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(config)
     });
     if (data && data.ok) {
       return true;
@@ -235,7 +233,7 @@ export class ManagerFeature extends AbstractFeature {
   ) {
     const data = await this.fetchApi("/customnode/fix", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(config)
     });
     if (data && data.ok) {
       return true;
@@ -253,7 +251,7 @@ export class ManagerFeature extends AbstractFeature {
   async installExtensionFromGit(url: string) {
     const data = await this.fetchApi("/customnode/install/git_url", {
       method: "POST",
-      body: url,
+      body: url
     });
     if (data && data.ok) {
       return true;
@@ -271,7 +269,7 @@ export class ManagerFeature extends AbstractFeature {
   async installPipPackages(packages: string[]) {
     const data = await this.fetchApi("/customnode/install/pip", {
       method: "POST",
-      body: packages.join(" "),
+      body: packages.join(" ")
     });
     if (data && data.ok) {
       return true;
@@ -289,7 +287,7 @@ export class ManagerFeature extends AbstractFeature {
   async uninstallExtension(config: IExtensionUninstallRequest) {
     const data = await this.fetchApi("/customnode/uninstall", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(config)
     });
     if (data && data.ok) {
       return true;
@@ -307,7 +305,7 @@ export class ManagerFeature extends AbstractFeature {
   async updateExtension(config: IExtensionUpdateRequest) {
     const data = await this.fetchApi("/customnode/update", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(config)
     });
     if (data && data.ok) {
       return true;
@@ -325,7 +323,7 @@ export class ManagerFeature extends AbstractFeature {
   async setActiveExtension(config: IExtensionActiveRequest) {
     const data = await this.fetchApi("/customnode/toggle_active", {
       method: "POST",
-      body: JSON.stringify(config),
+      body: JSON.stringify(config)
     });
     if (data && data.ok) {
       return true;
@@ -343,7 +341,7 @@ export class ManagerFeature extends AbstractFeature {
   async installModel(info: IModelInstallRequest) {
     const data = await this.fetchApi("/model/install", {
       method: "POST",
-      body: JSON.stringify(info),
+      body: JSON.stringify(info)
     });
     if (data && data.ok) {
       return true;

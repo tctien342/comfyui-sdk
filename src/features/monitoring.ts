@@ -1,8 +1,6 @@
 import { AbstractFeature } from "./abstract";
 
-const SYSTEM_MONITOR_EXTENSION = encodeURIComponent(
-  "Primitive boolean [Crystools]"
-);
+const SYSTEM_MONITOR_EXTENSION = encodeURIComponent("Primitive boolean [Crystools]");
 
 export type TMonitorEvent = {
   cpu_utilization: number;
@@ -78,9 +76,7 @@ export class MonitoringFeature extends AbstractFeature {
       const msg = ev.detail;
       if (msg.type === "crystools.monitor") {
         this.resources = msg.data;
-        this.dispatchEvent(
-          new CustomEvent("system_monitor", { detail: msg.data })
-        );
+        this.dispatchEvent(new CustomEvent("system_monitor", { detail: msg.data }));
       }
     });
   }

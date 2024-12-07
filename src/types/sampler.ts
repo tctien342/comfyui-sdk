@@ -27,10 +27,4 @@ export type TSamplerName =
   | "uni_pc"
   | "uni_pc_bh2";
 
-export type TSchedulerName =
-  | "normal"
-  | "karras"
-  | "exponential"
-  | "sgm_uniform"
-  | "simple"
-  | "ddim_uniform";
+export type TSchedulerName = "normal" | "karras" | "exponential" | "sgm_uniform" | "simple" | "ddim_uniform";

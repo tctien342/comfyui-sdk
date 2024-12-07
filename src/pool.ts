@@ -34,7 +34,7 @@ export enum EQueueMode {
   /**
    * Picks the client in a round-robin manner.
    */
-  "PICK_ROUTINE",
+  "PICK_ROUTINE"
 }
 
 export class ComfyPool extends EventTarget {
@@ -94,12 +94,10 @@ export class ComfyPool extends EventTarget {
       id: client.id,
       queueRemaining: 0,
       locked: false,
-      online: false,
+      online: false
     });
     await this.initializeClient(client, index);
-    this.dispatchEvent(
-      new CustomEvent("added", { detail: { client, clientIdx: index } })
-    );
+    this.dispatchEvent(new CustomEvent("added", { detail: { client, clientIdx: index } }));
   }
 
   /**
@@ -113,9 +111,7 @@ export class ComfyPool extends EventTarget {
     if (index !== -1) {
       this.clients.splice(index, 1);
       this.clientStates.splice(index, 1);
-      this.dispatchEvent(
-        new CustomEvent("removed", { detail: { client, clientIdx: index } })
-      );
+      this.dispatchEvent(new CustomEvent("removed", { detail: { client, clientIdx: index } }));
     }
   }
 
@@ -130,9 +126,7 @@ export class ComfyPool extends EventTarget {
     if (index >= 0 && index < this.clients.length) {
       const client = this.clients.splice(index, 1)[0];
       this.clientStates.splice(index, 1);
-      this.dispatchEvent(
-        new CustomEvent("removed", { detail: { client, clientIdx: index } })
-      );
+      this.dispatchEvent(new CustomEvent("removed", { detail: { client, clientIdx: index } }));
     }
   }
 
@@ -191,20 +185,16 @@ export class ComfyPool extends EventTarget {
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const fn = async (client: ComfyApi, idx?: number) => {
-        this.dispatchEvent(
-          new CustomEvent("executing", { detail: { client, clientIdx: idx } })
-        );
+        this.dispatchEvent(new CustomEvent("executing", { detail: { client, clientIdx: idx } }));
         try {
           resolve(await job(client, idx));
-          this.dispatchEvent(
-            new CustomEvent("executed", { detail: { client, clientIdx: idx } })
-          );
+          this.dispatchEvent(new CustomEvent("executed", { detail: { client, clientIdx: idx } }));
         } catch (e) {
           console.error(e);
           reject(e);
           this.dispatchEvent(
             new CustomEvent("execution_error", {
-              detail: { client, clientIdx: idx, error: e },
+              detail: { client, clientIdx: idx, error: e }
             })
           );
         }
@@ -236,33 +226,26 @@ export class ComfyPool extends EventTarget {
       excludeIds?: string[];
     }
   ): Promise<T[]> {
-    return Promise.all(
-      jobs.map((task) => this.run(task, weight, clientFilter))
-    );
+    return Promise.all(jobs.map((task) => this.run(task, weight, clientFilter)));
   }
 
   private async initializeClient(client: ComfyApi, index: number) {
     this.dispatchEvent(
       new CustomEvent("loading_client", {
-        detail: { client, clientIdx: index },
+        detail: { client, clientIdx: index }
       })
     );
     const states = this.clientStates[index];
     client.on("status", (ev) => {
       if (states.online === false) {
-        this.dispatchEvent(
-          new CustomEvent("connected", { detail: { client, clientIdx: index } })
-        );
+        this.dispatchEvent(new CustomEvent("connected", { detail: { client, clientIdx: index } }));
       }
       states.online = true;
-      if (
-        ev.detail.status.exec_info &&
-        ev.detail.status.exec_info.queue_remaining !== states.queueRemaining
-      ) {
+      if (ev.detail.status.exec_info && ev.detail.status.exec_info.queue_remaining !== states.queueRemaining) {
         if (ev.detail.status.exec_info.queue_remaining > 0) {
           this.dispatchEvent(
             new CustomEvent("have_job", {
-              detail: { client, remain: states.queueRemaining },
+              detail: { client, remain: states.queueRemaining }
             })
           );
         }
@@ -280,7 +263,7 @@ export class ComfyPool extends EventTarget {
       states.locked = false;
       this.dispatchEvent(
         new CustomEvent("disconnected", {
-          detail: { client, clientIdx: index },
+          detail: { client, clientIdx: index }
         })
       );
     });
@@ -289,7 +272,7 @@ export class ComfyPool extends EventTarget {
       states.locked = false;
       this.dispatchEvent(
         new CustomEvent("reconnected", {
-          detail: { client, clientIdx: index },
+          detail: { client, clientIdx: index }
         })
       );
     });
@@ -303,8 +286,8 @@ export class ComfyPool extends EventTarget {
           detail: {
             client,
             clientIdx: index,
-            error: new Error(ev.detail.exception_type, { cause: ev.detail }),
-          },
+            error: new Error(ev.detail.exception_type, { cause: ev.detail })
+          }
         })
       );
     });
@@ -314,21 +297,21 @@ export class ComfyPool extends EventTarget {
     client.on("auth_error", (ev) => {
       this.dispatchEvent(
         new CustomEvent("auth_error", {
-          detail: { client, clientIdx: index, res: ev.detail },
+          detail: { client, clientIdx: index, res: ev.detail }
         })
       );
     });
     client.on("auth_success", (ev) => {
       this.dispatchEvent(
         new CustomEvent("auth_success", {
-          detail: { client, clientIdx: index },
+          detail: { client, clientIdx: index }
         })
       );
     });
     client.on("connection_error", (ev) => {
       this.dispatchEvent(
         new CustomEvent("connection_error", {
-          detail: { client, clientIdx: index, res: ev.detail },
+          detail: { client, clientIdx: index, res: ev.detail }
         })
       );
     });
@@ -337,9 +320,7 @@ export class ComfyPool extends EventTarget {
      */
     await client.init().waitForReady();
     this.bindClientSystemMonitor(client, index);
-    this.dispatchEvent(
-      new CustomEvent("ready", { detail: { client, clientIdx: index } })
-    );
+    this.dispatchEvent(new CustomEvent("ready", { detail: { client, clientIdx: index } }));
   }
 
   private async bindClientSystemMonitor(client: ComfyApi, index: number) {
@@ -350,8 +331,8 @@ export class ComfyPool extends EventTarget {
             detail: {
               client,
               data: ev.detail,
-              clientIdx: index,
-            },
+              clientIdx: index
+            }
           })
         );
       });
@@ -381,19 +362,16 @@ export class ComfyPool extends EventTarget {
       weight: inputWeight,
       fn,
       excludeClientIds: clientFilter?.excludeIds,
-      includeClientIds: clientFilter?.includeIds,
+      includeClientIds: clientFilter?.includeIds
     });
     this.dispatchEvent(
       new CustomEvent("add_job", {
-        detail: { jobIdx: idx, weight: inputWeight },
+        detail: { jobIdx: idx, weight: inputWeight }
       })
     );
   }
 
-  private async getAvailableClient(
-    includeIds?: string[],
-    excludeIds?: string[]
-  ): Promise<ComfyApi> {
+  private async getAvailableClient(includeIds?: string[], excludeIds?: string[]): Promise<ComfyApi> {
     while (true) {
       let index = -1;
       const acceptedClients = this.clientStates.filter((c) => {
@@ -408,9 +386,7 @@ export class ComfyPool extends EventTarget {
       });
       switch (this.mode) {
         case EQueueMode.PICK_ZERO:
-          index = acceptedClients.findIndex(
-            (c) => c.queueRemaining === 0 && !c.locked && c.id
-          );
+          index = acceptedClients.findIndex((c) => c.queueRemaining === 0 && !c.locked && c.id);
           break;
         case EQueueMode.PICK_LOWEST:
           const queueSizes = acceptedClients.map((state) =>
@@ -424,9 +400,7 @@ export class ComfyPool extends EventTarget {
           break;
       }
       if (index !== -1 && acceptedClients[index]) {
-        const trueIdx = this.clientStates.findIndex(
-          (c) => c.id === acceptedClients[index].id
-        );
+        const trueIdx = this.clientStates.findIndex((c) => c.id === acceptedClients[index].id);
         this.clientStates[trueIdx].locked = true;
         const client = this.clients[trueIdx];
         return client;
@@ -441,10 +415,7 @@ export class ComfyPool extends EventTarget {
       return this.pickJob();
     }
     const job = this.jobQueue.shift();
-    const client = await this.getAvailableClient(
-      job?.includeClientIds,
-      job?.excludeClientIds
-    );
+    const client = await this.getAvailableClient(job?.includeClientIds, job?.excludeClientIds);
     const clientIdx = this.clients.indexOf(client);
     job?.fn?.(client, clientIdx);
     this.pickJob();

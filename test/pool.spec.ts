@@ -19,22 +19,22 @@ describe("ComfyPool", () => {
               handler({
                 detail: {
                   status: { exec_info: { queue_remaining: 0 } },
-                  sid: "sid",
-                },
+                  sid: "sid"
+                }
               }),
             0
           ); // Simulate the status event being dispatched
         }
       }),
       init: jest.fn().mockReturnValue({
-        waitForReady: jest.fn().mockResolvedValue(undefined),
+        waitForReady: jest.fn().mockResolvedValue(undefined)
       }),
       ext: {
         monitor: {
           isSupported: false,
-          on: jest.fn(),
-        },
-      },
+          on: jest.fn()
+        }
+      }
     } as unknown as ComfyApi;
 
     comfyPool = new ComfyPool([mockClient]);
@@ -43,7 +43,7 @@ describe("ComfyPool", () => {
 
   test("should initialize clients and dispatch init event", async () => {
     const initListener = jest.fn();
-        
+
     comfyPool = new ComfyPool([mockClient]);
     comfyPool.addEventListener("init", initListener);
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -140,7 +140,7 @@ describe("ComfyPool", () => {
           setTimeout(() => handler(), 50); // Simulate the reconnected event being dispatched
         }
       }),
-      id: "client2",
+      id: "client2"
     } as any as ComfyApi;
     comfyPool = new ComfyPool([tryClient]);
     comfyPool.addEventListener("disconnected", disconnectedListener);

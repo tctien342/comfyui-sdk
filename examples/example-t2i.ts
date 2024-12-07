@@ -10,19 +10,7 @@ import ExampleTxt2ImgWorkflow from "./example-txt2img-workflow.json";
  */
 export const Txt2ImgPrompt = new PromptBuilder(
   ExampleTxt2ImgWorkflow,
-  [
-    "positive",
-    "negative",
-    "checkpoint",
-    "seed",
-    "batch",
-    "step",
-    "cfg",
-    "sampler",
-    "sheduler",
-    "width",
-    "height",
-  ],
+  ["positive", "negative", "checkpoint", "seed", "batch", "step", "cfg", "sampler", "sheduler", "width", "height"],
   ["images"]
 )
   .setInputNode("checkpoint", "4.inputs.ckpt_name")
@@ -74,8 +62,6 @@ new CallWrapper(api, workflow)
   .onFinished((data) => {
     console.log(data.images?.images.map((img: any) => api.getPathImage(img)));
   })
-  .onProgress((info) =>
-    console.log("Processing node", info.node, `${info.value}/${info.max}`)
-  )
+  .onProgress((info) => console.log("Processing node", info.node, `${info.value}/${info.max}`))
   .onFailed((err) => console.log("Task is failed", err))
   .run();

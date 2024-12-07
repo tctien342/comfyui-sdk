@@ -31,7 +31,8 @@
     "auto-changelog": "^2.3.0",
     "commitizen": "^4.2.4",
     "cz-conventional-changelog": "^3.3.0",
-    "dts-bundle-generator": "^9.5.1"
+    "dts-bundle-generator": "^9.5.1",
+    "prettier": "^3.4.2"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -52,7 +53,8 @@
   "scripts": {
     "version": "auto-changelog -p",
     "commit": "git-cz",
-    "build": "bun build.ts"
+    "build": "bun build.ts",
+    "format": "prettier --write ."
   },
   "files": [
     "build"

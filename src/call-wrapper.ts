@@ -10,7 +10,7 @@ import {
   CustomEventError,
   ExecutionFailedError,
   ExecutionInterruptedError,
-  MissingNodeError,
+  MissingNodeError
 } from "./types/error";
 
 /**
@@ -27,15 +27,8 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
   private onPreviewFn?: (ev: Blob, promptId?: string) => void;
   private onPendingFn?: (promptId?: string) => void;
   private onStartFn?: (promptId?: string) => void;
-  private onOutputFn?: (
-    key: keyof PromptBuilder<I, string, T>["mapOutputKeys"],
-    data: any,
-    promptId?: string
-  ) => void;
-  private onFinishedFn?: (
-    data: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any>,
-    promptId?: string
-  ) => void;
+  private onOutputFn?: (key: keyof PromptBuilder<I, string, T>["mapOutputKeys"], data: any, promptId?: string) => void;
+  private onFinishedFn?: (data: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any>, promptId?: string) => void;
   private onFailedFn?: (err: Error, promptId?: string) => void;
   private onProgressFn?: (info: NodeProgress, promptId?: string) => void;
 
@@ -102,9 +95,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
    * @param fn - The callback function to handle the output.
    * @returns The current instance of the class.
    */
-  onOutput(
-    fn: (key: keyof PromptBuilder<I, O, T>["mapOutputKeys"], data: any, promptId?: string) => void
-  ) {
+  onOutput(fn: (key: keyof PromptBuilder<I, O, T>["mapOutputKeys"], data: any, promptId?: string) => void) {
     this.onOutputFn = fn;
     return this;
   }
@@ -116,9 +107,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
    *             and an optional promptId parameter.
    * @returns The current instance of the CallWrapper.
    */
-  onFinished(
-    fn: (data: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any>, promptId?: string) => void
-  ) {
+  onFinished(fn: (data: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any>, promptId?: string) => void) {
     this.onFinishedFn = fn;
     return this;
   }
@@ -154,9 +143,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
    *          or `undefined` if the job is not found,
    *          or `false` if the job execution fails.
    */
-  async run(): Promise<
-    Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | undefined | false
-  > {
+  async run(): Promise<Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | undefined | false> {
     /**
      * Start the job execution.
      */
@@ -167,16 +154,16 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
     }
 
     let promptLoadTrigger!: (value: boolean) => void;
-    const promptLoadCached: Promise<boolean> = new Promise(resolve => {
+    const promptLoadCached: Promise<boolean> = new Promise((resolve) => {
       promptLoadTrigger = resolve;
-    })
+    });
 
     let jobDoneTrigger!: (value: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | false) => void;
     const jobDonePromise: Promise<Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | false> = new Promise(
       (resolve) => {
         jobDoneTrigger = resolve;
       }
-    )
+    );
 
     /**
      * Declare the function to check if the job is executing.
@@ -190,9 +177,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
      * Declare the function to check if the job is cached.
      */
     const checkExecutionCachedFn = (event: CustomEvent<TExecutionCached>) => {
-      const outputNodes = Object.values(this.prompt.mapOutputKeys).filter(
-        (n) => !!n
-      ) as string[];
+      const outputNodes = Object.values(this.prompt.mapOutputKeys).filter((n) => !!n) as string[];
       if (event.detail.nodes.length > 0 && event.detail.prompt_id === job.prompt_id) {
         /**
          * Cached is true if all output nodes are included in the cached nodes.
@@ -205,15 +190,13 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
      * Listen to the executing event.
      */
     this.checkExecutingOffFn = this.client.on("executing", checkExecutingFn);
-    this.checkExecutedOffFn = this.client.on(
-      "execution_cached",
-      checkExecutionCachedFn
-    );
+    this.checkExecutedOffFn = this.client.on("execution_cached", checkExecutionCachedFn);
 
     // race condition handling
     let wentMissing = false;
     let cachedOutputDone = false;
-    let cachedOutputPromise: Promise<false | Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | null> = Promise.resolve(null);
+    let cachedOutputPromise: Promise<false | Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | null> =
+      Promise.resolve(null);
 
     const statusHandler = async () => {
       const queue = await this.client.getQueue();
@@ -242,16 +225,10 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
       promptLoadTrigger(false);
       jobDoneTrigger(false);
       this.cleanupListeners();
-      this.onFailedFn?.(
-        new WentMissingError('The job went missing!'),
-        job.prompt_id
-      );
-    }
+      this.onFailedFn?.(new WentMissingError("The job went missing!"), job.prompt_id);
+    };
 
-    this.statusHandlerOffFn = this.client.on(
-      "status",
-      statusHandler
-    );
+    this.statusHandlerOffFn = this.client.on("status", statusHandler);
 
     await promptLoadCached;
 
@@ -271,10 +248,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
     if (output === false) {
       cachedOutputDone = true;
       this.cleanupListeners();
-      this.onFailedFn?.(
-        new FailedCacheError("Failed to get cached output"),
-        this.promptId
-      );
+      this.onFailedFn?.(new FailedCacheError("Failed to get cached output"), this.promptId);
       jobDoneTrigger(false);
       return false;
     }
@@ -354,9 +328,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
         workflow = await this.bypassWorkflowNodes(workflow);
       } catch (e) {
         if (e instanceof Response) {
-          this.onFailedFn?.(
-            new MissingNodeError("Failed to get workflow node definitions", { cause: await e.json() })
-          );
+          this.onFailedFn?.(new MissingNodeError("Failed to get workflow node definitions", { cause: await e.json() }));
         } else {
           this.onFailedFn?.(new MissingNodeError("There was a missing node in the workflow bypass.", { cause: e }));
         }
@@ -364,18 +336,14 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
       }
     }
 
-    const job = await this.client
-      .appendPrompt(workflow)
-      .catch(async (e) => {
-        if (e instanceof Response) {
-          this.onFailedFn?.(
-            new EnqueueFailedError("Failed to queue prompt", { cause: await e.json() })
-          );
-        } else {
-          this.onFailedFn?.(new EnqueueFailedError("Failed to queue prompt", { cause: e }));
-        }
-        return null;
-      });
+    const job = await this.client.appendPrompt(workflow).catch(async (e) => {
+      if (e instanceof Response) {
+        this.onFailedFn?.(new EnqueueFailedError("Failed to queue prompt", { cause: await e.json() }));
+      } else {
+        this.onFailedFn?.(new EnqueueFailedError("Failed to queue prompt", { cause: e }));
+      }
+      return null;
+    });
     if (!job) {
       return;
     }
@@ -383,7 +351,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
     this.promptId = job.prompt_id;
     this.onPendingFn?.(this.promptId);
     this.onDisconnectedHandlerOffFn = this.client.on("disconnected", () =>
-      this.onFailedFn?.(new DisconnectedError('Disconnected'), this.promptId)
+      this.onFailedFn?.(new DisconnectedError("Disconnected"), this.promptId)
     );
     return job;
   }
@@ -424,12 +392,8 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
   ): void {
     const reverseOutputMapped = this.reverseMapOutputKeys();
 
-    this.progressHandlerOffFn = this.client.on("progress", (ev) =>
-      this.handleProgress(ev, promptId)
-    );
-    this.previewHandlerOffFn = this.client.on("b_preview", (ev) =>
-      this.onPreviewFn?.(ev.detail, this.promptId)
-    );
+    this.progressHandlerOffFn = this.client.on("progress", (ev) => this.handleProgress(ev, promptId));
+    this.previewHandlerOffFn = this.client.on("b_preview", (ev) => this.onPreviewFn?.(ev.detail, this.promptId));
 
     const totalOutput = Object.keys(reverseOutputMapped).length;
     let remainingOutput = totalOutput;
@@ -437,16 +401,12 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
     const executionHandler = (ev: CustomEvent) => {
       if (ev.detail.prompt_id !== promptId) return;
 
-    const outputKey =
-      reverseOutputMapped[
-        ev.detail.node as keyof typeof this.prompt.mapOutputKeys
-      ];
-    if (outputKey) {
-      this.output[outputKey as keyof PromptBuilder<I, O, T>["mapOutputKeys"]] =
-        ev.detail.output;
-      this.onOutputFn?.(outputKey, ev.detail.output, this.promptId);
-      remainingOutput--;
-    }
+      const outputKey = reverseOutputMapped[ev.detail.node as keyof typeof this.prompt.mapOutputKeys];
+      if (outputKey) {
+        this.output[outputKey as keyof PromptBuilder<I, O, T>["mapOutputKeys"]] = ev.detail.output;
+        this.onOutputFn?.(outputKey, ev.detail.output, this.promptId);
+        remainingOutput--;
+      }
 
       if (remainingOutput === 0) {
         this.cleanupListeners();
@@ -471,21 +431,13 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
       }
     };
 
-    this.executionEndSuccessOffFn = this.client.on(
-      "execution_success",
-      executedEnd
-    );
-    this.executionHandlerOffFn = this.client.on(
-      "executed",
-      executionHandler
-    );
-    this.errorHandlerOffFn = this.client.on("execution_error", (ev) =>
-      this.handleError(ev, promptId, jobDoneTrigger)
-    );
+    this.executionEndSuccessOffFn = this.client.on("execution_success", executedEnd);
+    this.executionHandlerOffFn = this.client.on("executed", executionHandler);
+    this.errorHandlerOffFn = this.client.on("execution_error", (ev) => this.handleError(ev, promptId, jobDoneTrigger));
     this.interruptionHandlerOffFn = this.client.on("execution_interrupted", (ev) => {
       if (ev.detail.prompt_id !== promptId) return;
       this.onFailedFn?.(
-        new ExecutionInterruptedError('The execution was interrupted!', { cause: ev.detail }),
+        new ExecutionInterruptedError("The execution was interrupted!", { cause: ev.detail }),
         ev.detail.prompt_id
       );
       this.cleanupListeners();
@@ -495,10 +447,13 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
 
   private reverseMapOutputKeys(): Record<string, string> {
     const outputMapped: Partial<Record<string, string>> = this.prompt.mapOutputKeys;
-    return Object.entries(outputMapped).reduce((acc, [k, v]) => {
-      if (v) acc[v] = k;
-      return acc;
-    }, {} as Record<string, string>);
+    return Object.entries(outputMapped).reduce(
+      (acc, [k, v]) => {
+        if (v) acc[v] = k;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
   }
 
   private handleProgress(ev: CustomEvent, promptId: string) {
@@ -515,10 +470,7 @@ export class CallWrapper<I extends string, O extends string, T extends NodeData>
     resolve: (value: Record<keyof PromptBuilder<I, O, T>["mapOutputKeys"], any> | false) => void
   ) {
     if (ev.detail.prompt_id !== promptId) return;
-    this.onFailedFn?.(
-      new CustomEventError(ev.detail.exception_type, { cause: ev.detail }),
-      ev.detail.prompt_id
-    );
+    this.onFailedFn?.(new CustomEventError(ev.detail.exception_type, { cause: ev.detail }), ev.detail.prompt_id);
     this.cleanupListeners();
     resolve(false);
   }

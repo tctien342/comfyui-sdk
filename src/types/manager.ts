@@ -15,24 +15,24 @@ enum EModelType {
   GLIGEN = "gligen",
   UPSCALE = "upscale",
   EMBEDDINGS = "embeddings",
-  ETC = "etc",
+  ETC = "etc"
 }
 
 export enum EInstallType {
   GIT_CLONE = "git-clone",
   COPY = "copy",
-  UNZIP = "unzip",
+  UNZIP = "unzip"
 }
 
 export enum EExtensionUpdateCheckResult {
   NO_UPDATE = 0,
   UPDATE_AVAILABLE = 1,
-  FAILED = 2,
+  FAILED = 2
 }
 export enum EUpdateResult {
   UNCHANGED = 0,
   SUCCESS = 1,
-  FAILED = 2,
+  FAILED = 2
 }
 export type TExtensionNodeItem = {
   url: string;
