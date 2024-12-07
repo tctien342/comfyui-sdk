@@ -24,6 +24,11 @@ export interface BearerTokenCredentials {
   token: string;
 }
 
+export interface CustomCredentials {
+  type: "custom";
+  headers: Record<string, string>;
+}
+
 export interface HistoryResponse {
   [key: string]: HistoryEntry;
 }
@@ -137,7 +142,7 @@ export interface NodeDef {
   };
   input_order: {
     required: string[];
-    optional?: string[],
+    optional?: string[];
     hidden: string[];
   };
   output: string[];
