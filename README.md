@@ -1,8 +1,18 @@
-# ComfyUI API Client
+# ComfyUI SDK
 
-A comprehensive Node.js client library for interacting with ComfyUI APIs. This powerful and flexible library provides a robust set of tools for managing ComfyUI instances, building prompts, and executing workflows with ease and type safety.
+A powerful TypeScript SDK for ComfyUI that provides type-safe workflow management, multi-instance support, and real-time execution monitoring.
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow.svg)](https://www.buymeacoffee.com/tctien342)
+
+## Features
+
+- 🔥 **Type-safe Workflow Building**: Build and validate workflows at compile time
+- 🌐 **Multi-Instance Support**: Load balance across multiple ComfyUI instances
+- 🔄 **Real-time Monitoring**: WebSocket integration for live execution updates
+- 🛠️ **Extension Support**: Built-in support for ComfyUI-Manager and Crystools
+- 🔒 **Authentication Ready**: Basic, Bearer and Custom auth support for secure setups
+
+## Quick Start
 
 ## Table of Contents
 
@@ -17,16 +27,6 @@ A comprehensive Node.js client library for interacting with ComfyUI APIs. This p
 9. [Best Practices](#best-practices)
 10. [Contributing](#contributing)
 11. [License](#license)
-
-## Features
-
-- **Multi-instance Support**: Manage multiple ComfyUI instances with an intuitive connection pooling system.
-- **Type-safe Prompt Building**: Construct workflows with a powerful `PromptBuilder` that ensures type safety for inputs and outputs.
-- **Real-time Updates**: WebSocket support for receiving live updates during workflow execution.
-- **Robust Error Handling**: Automatic reconnection and comprehensive error management.
-- **Authentication Support**: Built-in support for basic authentication (ComfyUI behind NginX with basic auth).
-- **Event-driven Architecture**: Detailed event system for monitoring execution progress and handling various states.
-- **Flexible Execution Modes**: Choose from different execution modes to optimize for your specific use case.
 
 ## Installation
 
@@ -87,6 +87,8 @@ const promptBuilder = new PromptBuilder(
 ```
 
 ### Executing a Workflow
+
+> To avoid ComfyUI's caching and ensure different results with each call, use unique `seed` values.
 
 ```typescript
 import { CallWrapper } from "@saintno/comfyui-sdk";
@@ -199,7 +201,7 @@ pool.batch([
 ```typescript
 const api = new ComfyApi("http://localhost:8188", "client-id", {
   credentials: {
-    type: "basic",
+    type: "basic", // Can be "basic", "bearer_token" and "custom"
     username: "your-username",
     password: "your-password"
   }
