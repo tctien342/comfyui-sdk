@@ -178,3 +178,4 @@ build
 
 test.ts
 temp/
+nodeDefs.json

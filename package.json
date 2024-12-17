@@ -48,13 +48,15 @@
     "comfyui-sdk"
   ],
   "dependencies": {
+    "citty": "^0.1.6",
     "ws": "^8.18.0"
   },
   "scripts": {
     "version": "auto-changelog -p",
     "commit": "git-cz",
     "build": "bun build.ts",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "cli": "bun cli.ts"
   },
   "files": [
     "build"

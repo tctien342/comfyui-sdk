@@ -100,7 +100,7 @@ export class ComfyApi extends EventTarget {
    *
    * @returns An object containing the available features, where each feature is a key-value pair.
    */
-  get availabeFeatures() {
+  get availableFeatures() {
     return Object.keys(this.ext).reduce(
       (acc, key) => ({
         ...acc,
